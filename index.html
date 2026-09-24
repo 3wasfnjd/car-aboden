@@ -47,13 +47,15 @@
       <small>اسحب المقود يمينًا / يسارًا</small>
     </div>
     <div class="right-controls">
-      <div class="drive-options">
-        <button id="precision" aria-pressed="false">قيادة دقيقة</button>
-        <button id="direction" class="direction" data-gear="D" aria-pressed="false" aria-label="الاتجاه: تقدم. اضغط لاختيار الرجوع للخلف"><span class="drive" aria-hidden="true">D</span><span class="reverse" aria-hidden="true">R</span></button>
-      </div>
+      <button id="precision" aria-pressed="false">قيادة دقيقة</button>
       <div class="pedals">
         <button id="brake" class="pedal brake" aria-pressed="false" aria-label="الفرامل: اضغط باستمرار للتوقف"><span class="pedal-tread" aria-hidden="true"></span><b>فرامل</b></button>
-        <button id="accelerator" class="pedal accelerator" aria-pressed="false" aria-label="البنزين: اضغط واسحب لأعلى لزيادة السرعة، وارفع إصبعك للتوقف"><span class="pedal-tread" aria-hidden="true"></span><b>بنزين</b></button>
+        <div id="driveLever" class="drive-lever" role="slider" tabindex="0" aria-label="الدعسة والقير: محايد" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-orientation="vertical" data-gear="N">
+          <span class="lever-label lever-d">D</span>
+          <span class="lever-line" aria-hidden="true"></span>
+          <span id="leverKnob" class="lever-knob" aria-hidden="true">N</span>
+          <span class="lever-label lever-r">R</span>
+        </div>
       </div>
     </div>
     <div class="bottom-tools"><button id="reset" aria-label="إعادة السيارة">↻ <span>إعادة السيارة</span></button><button id="camera" aria-label="تغيير زاوية الكاميرا">◈ <span>الكاميرا</span></button></div>
@@ -61,10 +63,10 @@
 </main>
 <aside id="settings" hidden>
   <header><h2>تجربة القيادة</h2><button id="closeSettings" aria-label="إغلاق الإعدادات">×</button></header>
-  <p>المقود يسار الشاشة للتوجيه فقط: اسحبه يمينًا أو يسارًا، ويعود للوسط عند تركه. البنزين والفرامل يمين الشاشة ويمكن استخدامهما مع المقود بإصبعين. اضغط أسفل البنزين لسرعة خفيفة واسحب لأعلى لزيادتها؛ الفرامل تتغلب على البنزين ولا تُرجع السيارة للخلف. للرجوع توقف وارفع إصبعك عن البنزين ثم اختر R، وللتقدم اختر D. فعّل القيادة الدقيقة قرب العقبات.</p>
+  <p>المقود يسار الشاشة للتوجيه فقط. يمين الشاشة متحكم واحد للدعسة والقير: ارفعه إلى D للتقدم وأنزله إلى R للرجوع، وكلما ابتعدت عن المنتصف زادت الدعسة. إذا عكست الاتجاه والسيارة تتحرك يفرمل النظام أولًا قبل التحرك بالعكس. الفرامل مستقلة. فعّل القيادة الدقيقة قرب العقبات.</p>
   <p class="keyboard">الكمبيوتر: WASD أو الأسهم · Space فرامل · R إعادة · P قيادة دقيقة · Esc إيقاف.</p>
   <label for="quality">جودة العرض</label><select id="quality"><option value="balanced">متوازنة</option><option value="low">خفيفة بدون ظلال</option></select>
-  <label for="speedLimit">حد السرعة التجريبي <output id="speedValue">5.2</output></label><input id="speedLimit" type="range" min="2" max="8" value="5.2" step=".2">
+  <label for="speedLimit">حد السرعة التجريبي <output id="speedValue">8.4</output></label><input id="speedLimit" type="range" min="3" max="12" value="8.4" step=".2">
   <p class="note">الأرقام بوحدات المحاكاة وليست سرعة سيارة لعبة حقيقية. الفيزياء تحتاج اختبارًا على الجهاز المستهدف.</p>
   <div class="setting-actions"><button id="savePoint">حفظ موضع البداية</button><button id="resetWorld">إعادة ساحة الاختبار</button></div>
   <p id="telemetry" class="telemetry" dir="ltr">— FPS · —/4 contacts</p>
