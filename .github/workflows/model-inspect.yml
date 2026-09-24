@@ -1,0 +1,29 @@
+name: Model inspection
+on:
+  push:
+    branches: [motri-gmc-speed]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect actual uploaded GLB
+        run: |
+          python3 - <<'PY'
+          import json,struct,pathlib
+          b=pathlib.Path('models/gmc_sierra_work_truck.glb').read_bytes()
+          magic,version,total=struct.unpack_from('<III',b)
+          assert magic==0x46546c67 and version==2 and total==len(b)
+          n,kind=struct.unpack_from('<II',b,12)
+          j=json.loads(b[20:20+n])
+          print('MODEL_ASSET',json.dumps(j.get('asset',{})))
+          print('MODEL_EXTENSIONS',json.dumps(j.get('extensionsUsed',[])))
+          print('MODEL_SCENES',json.dumps(j.get('scenes',[])))
+          for i,node in enumerate(j.get('nodes',[])): print('NODE',i,json.dumps(node))
+          for i,mesh in enumerate(j.get('meshes',[])):
+            print('MESH',i,mesh.get('name'),json.dumps([{'material':p.get('material'),'position':j['accessors'][p['attributes']['POSITION']],'indexCount':j['accessors'][p['indices']]['count'] if 'indices' in p else None} for p in mesh['primitives']]))
+          for i,m in enumerate(j.get('materials',[])): print('MATERIAL',i,json.dumps(m))
+          print('IMAGES',json.dumps(j.get('images',[])))
+          PY
