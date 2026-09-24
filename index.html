@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#203831">
+<meta name="description" content="موتري: نموذج قيادة سيارة لعبة للجوال. منحدرات وصناديق وتحكم دقيق؛ مشروع مغامرة مستقل.">
+<title>موتري · مختبر القيادة</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}
+</script>
+</head>
+<body>
+<canvas id="view" aria-label="ساحة اختبار سيارة موتري"></canvas>
+<section id="intro" class="intro">
+  <div class="intro-card">
+    <span class="eyebrow">MOTRI / 01 <span>نموذج أولي</span></span>
+    <h1>موتري<span class="brand-dot">.</span></h1>
+    <p class="tagline">سيارة صغيرة.<br><strong>والطريق قدّامها كبير.</strong></p>
+    <p class="intro-text">هنا نختبر القيادة قبل بداية المغامرة. جرّب المنحدر، مرّ بين الحواجز، وادفع الصندوق إلى مكانه.</p>
+    <div class="intro-chips"><span>تحكم باللمس</span><span>تعليق بأربع عجلات</span><span>لا تحتاج كاميرا</span></div>
+    <button id="start" class="start" disabled>تجهيز السيارة…</button>
+    <p id="loadState" class="load-state" role="status">تحميل مكتبات القيادة والرسوم…</p>
+    <div class="intro-footer"><span>الاسم والموديل مؤقتان</span><span>RC ADVENTURE LAB</span></div>
+  </div>
+</section>
+<main id="hud" hidden>
+  <header class="topbar">
+    <div class="brand">موتري<span>.</span><small>مختبر القيادة</small></div>
+    <nav class="nav"><button id="help" aria-label="الإعدادات والتعليمات">الضبط</button><button id="pause" aria-label="إيقاف مؤقت">Ⅱ</button></nav>
+  </header>
+  <div class="mission"><span class="status-dot"></span><span id="mission">ادفع الصندوق البرتقالي إلى المربع الأخضر</span></div>
+  <div class="speedbox"><b id="speed">0</b><span>%<small>السرعة</small></span><strong id="gear">N</strong></div>
+  <div class="drive-controls">
+    <div class="stick-wrap"><div id="stick" role="application" aria-label="جويستك: أعلى للتقدم، أسفل للرجوع، يمين ويسار للتوجيه"><span class="stick-mark top">↑</span><span class="stick-mark bottom">↓</span><span class="stick-mark left">‹</span><span class="stick-mark right">›</span><div id="knob"></div></div><small>قدّام / رجوع · يمين / يسار</small></div>
+    <div class="right-controls"><button id="precision" aria-pressed="false">قيادة دقيقة</button><button id="brake" class="brake" aria-label="اضغط باستمرار للفرامل"><span>Ⅱ</span>فرامل</button></div>
+    <div class="bottom-tools"><button id="reset" aria-label="إعادة السيارة">↻ <span>إعادة السيارة</span></button><button id="camera" aria-label="تغيير زاوية الكاميرا">◈ <span>الكاميرا</span></button></div>
+  </div>
+</main>
+<aside id="settings" hidden>
+  <header><h2>تجربة القيادة</h2><button id="closeSettings" aria-label="إغلاق الإعدادات">×</button></header>
+  <p>اسحب لأعلى للتقدم ولأسفل للرجوع، وحرك الجويستك يمينًا أو يسارًا للتوجيه. مقدار السحب يتحكم بالسرعة. فعّل القيادة الدقيقة قرب العقبات.</p>
+  <p class="keyboard">الكمبيوتر: WASD أو الأسهم · Space فرامل · R إعادة · P قيادة دقيقة · Esc إيقاف.</p>
+  <label for="quality">جودة العرض</label><select id="quality"><option value="balanced">متوازنة</option><option value="low">خفيفة بدون ظلال</option></select>
+  <label for="speedLimit">حد السرعة التجريبي <output id="speedValue">5.2</output></label><input id="speedLimit" type="range" min="2" max="8" value="5.2" step=".2">
+  <p class="note">الأرقام بوحدات المحاكاة وليست سرعة سيارة لعبة حقيقية. الفيزياء تحتاج اختبارًا على الجهاز المستهدف.</p>
+  <div class="setting-actions"><button id="savePoint">حفظ موضع البداية</button><button id="resetWorld">إعادة ساحة الاختبار</button></div>
+  <p id="telemetry" class="telemetry" dir="ltr">— FPS · —/4 contacts</p>
+</aside>
+<div id="toast" role="status"></div>
+<section id="fatal" hidden><div><h2>تعذّر تشغيل التجربة</h2><p id="fatalText">لم يكتمل تحميل المحرك.</p><p>افتح النسخة المنشورة عبر HTTPS أو الخادم المحلي. فتح ملفات المصدر من مدير الملفات لا يكفي.</p><button onclick="location.reload()">إعادة المحاولة</button></div></section>
+<script id="bootstrap" type="module">
+const timeout=setTimeout(()=>{document.getElementById('loadState').textContent='التحميل تأخر. تحقق من الاتصال بالإنترنت؛ هذه النسخة تستخدم CDN للمكتبات.';},18000);
+try {const {boot}=await import('./src/app.js');await boot();clearTimeout(timeout);}
+catch(error){clearTimeout(timeout);console.error(error);document.getElementById('fatal').hidden=false;document.getElementById('fatalText').textContent=error.message||String(error);}
+</script>
+</body>
+</html>

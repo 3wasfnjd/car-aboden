@@ -1,0 +1,18 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {CONFIG,axis,clamp,approach,driveCommand,fixedSteps,safeSpawn} from '../src/core.js';
+test('dead zone is zero; full input stays full',()=>{assert.equal(axis(.05),0);assert.equal(axis(-.05),0);assert.equal(axis(1),1);assert.equal(axis(-1),-1);});
+test('analogue input preserves magnitude',()=>assert.ok(axis(.3)>0&&axis(.3)<axis(.7)));
+test('malformed input is bounded',()=>{assert.equal(axis(NaN),0);assert.equal(clamp(Infinity,-1,1),0);assert.equal(axis(50),1);});
+test('forward force has donor vehicle sign',()=>assert.ok(driveCommand({throttle:1},0).force<0));
+test('reverse force is positive and slower',()=>{const r=driveCommand({throttle:-1},0);assert.ok(r.force>0);assert.equal(r.target,-CONFIG.reverseSpeed);});
+test('back while moving forward brakes first',()=>{const r=driveCommand({throttle:-1},2);assert.equal(r.force,0);assert.equal(r.brake,CONFIG.brakeForce);assert.equal(r.reversing,true);});
+test('forward while reversing brakes first',()=>{const r=driveCommand({throttle:1},-1);assert.equal(r.force,0);assert.equal(r.brake,CONFIG.brakeForce);});
+test('brake overrides accelerator',()=>{const r=driveCommand({throttle:1,brake:true},0);assert.equal(r.force,0);assert.equal(r.brake,CONFIG.brakeForce);});
+test('precision caps forward and reverse',()=>{assert.equal(driveCommand({throttle:1,precision:true},0).target,1.5);assert.equal(driveCommand({throttle:-1,precision:true},0).target,-1.5);});
+test('partial stick sets lower target speed',()=>assert.equal(driveCommand({throttle:.25},0).target,CONFIG.maxSpeed*.25));
+test('overspeed is braked, not teleported',()=>{const r=driveCommand({throttle:1},CONFIG.maxSpeed+1);assert.equal(r.force,0);assert.ok(r.brake>0);});
+test('release has engine braking',()=>assert.ok(driveCommand({throttle:0},3).brake>0));
+test('steering sign and rate',()=>{assert.ok(driveCommand({steer:1},0).steer<0);assert.equal(approach(0,1,.1),.1);assert.equal(approach(.95,1,.1),1);});
+test('30Hz and 120Hz produce same fixed-step count',()=>{for(const fps of [30,60,120]){let acc=0,n=0;for(let i=0;i<fps*3;i++){const r=fixedSteps(acc,1/fps);acc=r.accumulator;n+=r.count;}assert.equal(n,360);}});
+test('resume backlog is bounded',()=>{const r=fixedSteps(0,100);assert.equal(r.count,8);assert.ok(r.accumulator<CONFIG.step);});
+test('invalid checkpoints fall back safely',()=>{for(const p of [null,{},[1],[100,1,0],[1,-8,0],[0,NaN,0]])assert.deepEqual(safeSpawn(p),[...CONFIG.spawn]);assert.deepEqual(safeSpawn([0,.72,-12]),[0,.72,-12]);});

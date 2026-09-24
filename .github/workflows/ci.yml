@@ -1,0 +1,31 @@
+name: Motri checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned physics and graphics libraries
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npm test
+      - run: npm run check
+      - run: npm run test:physics
+      - run: npm run build
+      - name: Install test browser
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test actual WebGL and mobile controls
+        run: node tests/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: motri-browser-checks
+          path: artifacts/
+          if-no-files-found: ignore

@@ -1,0 +1,15 @@
+{
+  "name":"motri",
+  "version":"0.1.0",
+  "private":true,
+  "type":"module",
+  "description":"موتري — independent mobile RC adventure foundation",
+  "scripts":{
+    "start":"node scripts/serve.mjs",
+    "build":"node scripts/build.mjs",
+    "test":"node --test tests/core.test.mjs",
+    "test:physics":"node --test tests/physics.test.mjs",
+    "check":"node scripts/check.mjs"
+  },
+  "dependencies":{"three":"0.185.1","cannon-es":"0.20.0"}
+}
