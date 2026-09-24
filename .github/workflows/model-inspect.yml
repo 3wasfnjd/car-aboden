@@ -9,21 +9,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect actual uploaded GLB
+      - name: Inspect connected geometry
         run: |
           python3 - <<'PY'
-          import json,struct,pathlib
+          import json,struct,pathlib,collections
           b=pathlib.Path('models/gmc_sierra_work_truck.glb').read_bytes()
-          magic,version,total=struct.unpack_from('<III',b)
-          assert magic==0x46546c67 and version==2 and total==len(b)
-          n,kind=struct.unpack_from('<II',b,12)
-          j=json.loads(b[20:20+n])
-          print('MODEL_ASSET',json.dumps(j.get('asset',{})))
-          print('MODEL_EXTENSIONS',json.dumps(j.get('extensionsUsed',[])))
-          print('MODEL_SCENES',json.dumps(j.get('scenes',[])))
-          for i,node in enumerate(j.get('nodes',[])): print('NODE',i,json.dumps(node))
-          for i,mesh in enumerate(j.get('meshes',[])):
-            print('MESH',i,mesh.get('name'),json.dumps([{'material':p.get('material'),'position':j['accessors'][p['attributes']['POSITION']],'indexCount':j['accessors'][p['indices']]['count'] if 'indices' in p else None} for p in mesh['primitives']]))
-          for i,m in enumerate(j.get('materials',[])): print('MATERIAL',i,json.dumps(m))
-          print('IMAGES',json.dumps(j.get('images',[])))
+          n,kind=struct.unpack_from('<II',b,12);j=json.loads(b[20:20+n]);binary=28+n
+          def values(i):
+            a=j['accessors'][i];v=j['bufferViews'][a['bufferView']];size={'SCALAR':1,'VEC2':2,'VEC3':3,'VEC4':4}[a['type']];fmt={5126:'f',5125:'I',5123:'H',5121:'B'}[a['componentType']];step=struct.calcsize(fmt)*size
+            return [struct.unpack_from('<'+fmt*size,b,binary+v.get('byteOffset',0)+a.get('byteOffset',0)+k*v.get('byteStride',step)) for k in range(a['count'])]
+          p=j['meshes'][0]['primitives'][0];pos=values(p['attributes']['POSITION']);idx=[v[0] for v in values(p['indices'])]
+          parent=list(range(len(pos)));seen={}
+          def root(i):
+            while parent[i]!=i:
+              parent[i]=parent[parent[i]];i=parent[i]
+            return i
+          def union(a,b): parent[root(a)]=root(b)
+          for i,v in enumerate(pos):
+            k=tuple(round(x,3) for x in v)
+            if k in seen: union(i,seen[k])
+            else: seen[k]=i
+          for i in range(0,len(idx),3): union(idx[i],idx[i+1]);union(idx[i],idx[i+2])
+          groups=collections.defaultdict(list)
+          for i in range(0,len(idx),3): groups[root(idx[i])].extend(idx[i:i+3])
+          for num,g in enumerate(sorted(groups.values(),key=len,reverse=True)):
+            v=[pos[k] for k in set(g)];mn=[min(x[a] for x in v) for a in range(3)];mx=[max(x[a] for x in v) for a in range(3)]
+            print('COMPONENT',num,len(g)//3,'min',mn,'max',mx,'center',[(mn[a]+mx[a])/2 for a in range(3)])
           PY
