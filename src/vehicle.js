@@ -6,7 +6,7 @@
  * GLBs, jump/boost, postprocessing or race systems are included.
  */
 import * as CANNON from 'cannon-es';
-import { CONFIG, driveCommand, approach, safeSpawn } from './core.js';
+import { CONFIG, driveCommand, approach, safeSpawn, clamp } from './core.js';
 export class MotriVehicle {
   constructor(world) {
     this.world = world;
@@ -56,6 +56,18 @@ export class MotriVehicle {
     const cmd = driveCommand(this.input,this.speed,this.params);
     this.steer=approach(this.steer,cmd.steer,this.params.steerRate*dt);
     this.rig.setSteeringValue(this.steer,0);this.rig.setSteeringValue(this.steer,1);
+
+    // Hajwala-like yaw response: ease the real chassis toward a speed-dependent
+    // turn rate. Suspension, wheel contact, ramps and collision physics remain active.
+    const signedSpeed=this.speed;
+    const direction=Math.sign(Math.abs(signedSpeed)>.12?signedSpeed:(this.input.throttle||1));
+    const speedNorm=clamp(Math.abs(signedSpeed)/Math.max(this.params.maxSpeed,.001),0,1);
+    const authority=.28+.72*speedNorm;
+    const yawRate=this.params.yawRateLow+(this.params.yawRateHigh-this.params.yawRateLow)*speedNorm;
+    const targetYaw=-clamp(this.input.steer,-1,1)*direction*yawRate*authority;
+    const yawBlend=1-Math.exp(-this.params.yawAssist*dt);
+    this.body.angularVelocity.y += (targetYaw-this.body.angularVelocity.y)*yawBlend;
+
     const w=this.rig.wheelInfos;
     const load=w[0].suspensionForce+w[1].suspensionForce;
     const loadFactor=cmd.force<0 ? Math.max(.35,Math.min(1,load/(this.params.mass*9.82*.2))) : 1;
