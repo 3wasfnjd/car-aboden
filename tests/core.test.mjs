@@ -16,7 +16,6 @@ test('steering sign and rate',()=>{assert.ok(driveCommand({steer:1},0).steer<0);
 test('30Hz and 120Hz produce same fixed-step count',()=>{for(const fps of [30,60,120]){let acc=0,n=0;for(let i=0;i<fps*3;i++){const r=fixedSteps(acc,1/fps);acc=r.accumulator;n+=r.count;}assert.equal(n,360);}});
 test('resume backlog is bounded',()=>{const r=fixedSteps(0,100);assert.equal(r.count,8);assert.ok(r.accumulator<CONFIG.step);});
 test('invalid checkpoints fall back safely',()=>{for(const p of [null,{},[1],[100,1,0],[1,-8,0],[0,NaN,0]])assert.deepEqual(safeSpawn(p),[...CONFIG.spawn]);assert.deepEqual(safeSpawn([0,.72,-12]),[0,.72,-12]);});
-
 test('smooth response matches across 30 and 120 updates per second',()=>{const values=[30,60,120].map(fps=>{let v=0;for(let i=0;i<fps;i++)v=damp(v,1,10,1/fps);return v;});assert.ok(Math.max(...values)-Math.min(...values)<1e-10);});
 test('brake impulse cannot exceed available forward momentum on four contacts',()=>{const b=brakeImpulse(26,.2,250,4,0,1/120);assert.ok(b*4<250*.2);assert.equal(brakeImpulse(26,0,250,4,0,1/120),0);});
-test('faster normal mode does not increase precision drive power',()=>{assert.equal(CONFIG.maxSpeed,10);assert.equal(CONFIG.reverseSpeed,6);assert.equal(driveCommand({throttle:1,precision:true},0).force,-750);assert.equal(driveCommand({throttle:1},0).force,-1100);});
+test('faster GMC tune preserves precision power and raises normal speed',()=>{assert.equal(CONFIG.maxSpeed,14);assert.equal(CONFIG.reverseSpeed,8.4);assert.equal(driveCommand({throttle:1,precision:true},0).force,-750);assert.equal(driveCommand({throttle:1},0).force,-1600);});

@@ -23,10 +23,19 @@ export async function boot() {
   const notify=text=>{$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2600);};
   function resetCar(){input.reset();car.reset();accumulator=0;cameraTarget.copy(car.body.position);notify('عادت السيارة إلى نقطة البداية');}
   function showMenu(){running=false;paused=true;input.setEnabled(false);$('intro').hidden=false;$('hud').hidden=true;$('settings').hidden=true;$('start').textContent='متابعة القيادة';}
-  const input=new InputController(resetCar,()=>running?showMenu():start());
-  input.setEnabled(false);
+  const input=new InputController(resetCar,()=>running?showMenu():start());input.setEnabled(false);
+  let modelStatus={loaded:false};
+  // Finish model/rig installation before accepting driving input. Failed model
+  // downloads remain visible as a warning, never a silent successful replacement.
+  if(!window.MOTRI_SINGLE_FILE){
+    $('loadState').textContent='تحميل سيارة GMC وتجهيز العجلات…';
+    try {modelStatus=await loadVehicleModel(visual,'models/vehicle.json',car);}
+    catch(e){console.warn(e);modelStatus={loaded:false,error:e.message};}
+  }
   function start(){if(dead)return;running=true;paused=false;everStarted=true;input.setEnabled(true);last=performance.now();accumulator=0;$('intro').hidden=true;$('hud').hidden=false;}
-  $('start').disabled=false;$('start').textContent='ابدأ القيادة';$('loadState').textContent='جاهزة للتجربة • بدون كاميرا';
+  $('start').disabled=false;$('start').textContent='ابدأ القيادة';
+  $('loadState').textContent=modelStatus.loaded?'GMC جاهزة • أربع عجلات متحركة':modelStatus.error?'تعذر تحميل GMC؛ السيارة المؤقتة متاحة: '+modelStatus.error:'جاهزة للتجربة • بدون كاميرا';
+  $('speedLimit').max='20';$('speedLimit').value=String(CONFIG.maxSpeed);$('speedValue').textContent=CONFIG.maxSpeed.toFixed(1);
   $('start').addEventListener('click',start);$('pause').addEventListener('click',showMenu);$('reset').addEventListener('click',resetCar);
   $('precision').addEventListener('click',()=>{input.precision=!input.precision;$('precision').setAttribute('aria-pressed',String(input.precision));$('precision').textContent=input.precision?'قيادة دقيقة: مفعّلة':'قيادة دقيقة';notify(input.precision?'سرعة منخفضة للتحكم قرب العقبات':'القيادة العادية');});
   $('camera').addEventListener('click',()=>{camTargetYaw+=Math.PI/2;});
@@ -35,25 +44,20 @@ export async function boot() {
   $('resetWorld').addEventListener('click',()=>{lab.reset();car.checkpoint=[...CONFIG.spawn];try{localStorage.removeItem('motri-checkpoint-v1');}catch{}resetCar();$('mission').textContent='ادفع الصندوق البرتقالي إلى المربع الأخضر';});
   $('savePoint').addEventListener('click',()=>{
     const p=car.body.position;
-    // Only checkpoint the clear, central start area: never respawn inside an object.
     if(Math.abs(p.x)>3||p.z>-9||p.z< -22||p.y>1.5){notify('احفظ نقطة البداية في المساحة الخالية قبل المسارات');return;}
     car.checkpoint=safeSpawn([p.x,.72,p.z]);try{localStorage.setItem('motri-checkpoint-v1',JSON.stringify(car.checkpoint));notify('تم حفظ موضع البداية');}catch{notify('حُفظت النقطة لهذه الجلسة فقط');}
   });
   $('quality').addEventListener('change',()=>{const low=$('quality').value==='low';renderer.setPixelRatio(Math.min(devicePixelRatio||1,low?1:1.5));renderer.shadowMap.enabled=!low;resize();});
   $('speedLimit').addEventListener('input',()=>{car.params.maxSpeed=Number($('speedLimit').value);car.params.reverseSpeed=car.params.maxSpeed*.6;$('speedValue').textContent=car.params.maxSpeed.toFixed(1);});
   function resize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
-  window.addEventListener('resize',resize);resize();
-  cameraTarget.copy(car.body.position);camera.position.set(12,14,-28);
+  window.addEventListener('resize',resize);resize();cameraTarget.copy(car.body.position);camera.position.set(12,14,-28);
   document.addEventListener('visibilitychange',()=>{last=performance.now();accumulator=0;if(document.hidden&&running)showMenu();});
   window.addEventListener('blur',()=>{if(running)showMenu();});
   canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();running=false;input.reset();$('fatal').hidden=false;$('fatalText').textContent='توقف عرض الرسوم. أعد تحميل الصفحة لإعادة تهيئة المحرك.';});
-  // Local GLB adapter is opt-in. Standalone build deliberately has no model request.
-  if(!window.MOTRI_SINGLE_FILE)loadVehicleModel(visual).then(r=>{if(r.loaded)notify('تم تحميل موديل السيارة');}).catch(e=>{console.warn(e);notify('تعذر تحميل الموديل؛ بقيت السيارة المؤقتة');});
   renderer.setAnimationLoop(now=>{
     if(dead||document.hidden)return;
     const dt=last?Math.min(.08,Math.max(0,(now-last)/1000)):0;last=now;elapsed+=dt;
     try{
-      // Initial menu simulates only settling (no controls); pause freezes all physics.
       if(running||!everStarted){
         car.input=running?input.read():{throttle:0,steer:0,brake:true,precision:false};
         const steps=fixedSteps(accumulator,dt);accumulator=steps.accumulator;
@@ -80,8 +84,7 @@ export async function boot() {
       }
     }catch(e){console.error(e);renderer.setAnimationLoop(null);running=false;$('fatal').hidden=false;$('fatalText').textContent='تعذر استكمال التشغيل: '+e.message;}
   });
-  // Test-only API is not enabled on ordinary visits.
-  if(new URLSearchParams(location.search).has('debug'))window.__motri={car,lab,input,scene,renderer,start,resetCar};
+  if(new URLSearchParams(location.search).has('debug'))window.__motri={car,lab,input,scene,renderer,visual,modelStatus,start,resetCar};
   window.addEventListener('pagehide',e=>{if(e.persisted){running=false;input.reset();return;}dead=true;renderer.setAnimationLoop(null);input.dispose();visual.dispose();car.dispose();renderer.dispose();});
   window.addEventListener('pageshow',e=>{if(e.persisted)showMenu();});
 }

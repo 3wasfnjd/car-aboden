@@ -1,10 +1,7 @@
 {
-  "enabled": false,
-  "body": "body.glb",
-  "bodyWidth": 1.8,
-  "rotation": [0, 0, 0],
-  "offset": [0, 0.2, 0],
-  "wheel": "wheel.glb",
-  "wheelRotation": [0, 0, 0],
-  "wheels": {"frontLeft": null, "frontRight": null, "rearLeft": null, "rearRight": null}
+  "enabled": true,
+  "profile": "gmc-sierra-work-truck",
+  "model": "gmc_sierra_work_truck.glb",
+  "width": 2.2,
+  "credits": "CREDITS.md"
 }

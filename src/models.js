@@ -1,14 +1,22 @@
-// Optional model adapter. Nothing is downloaded until models/vehicle.json is enabled.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-export async function loadVehicleModel(visual, configURL='models/vehicle.json') {
-  const response=await fetch(configURL,{cache:'no-cache'});if(!response.ok)throw new Error('ملف إعداد الموديل غير متاح');
+import { prepareGmcModel, installGmcModel } from './gmc.js';
+
+export async function loadVehicleModel(visual, configURL='models/vehicle.json', car=null) {
+  const response=await fetch(configURL,{cache:'no-cache'});
+  if(!response.ok)throw new Error('ملف إعداد الموديل غير متاح');
   const cfg=await response.json();if(!cfg.enabled)return {loaded:false};
   const base=new URL(configURL,location.href),loader=new GLTFLoader();
   const resolve=path=>new URL(path,base).href;
   const load=async(path)=>{const {scene}=await loader.loadAsync(resolve(path));scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});return scene;};
+  if(cfg.profile==='gmc-sierra-work-truck'){
+    if(!cfg.model)throw new Error('حدد ملف GMC');
+    const source=await load(cfg.model);
+    const prepared=prepareGmcModel(source,{width:Number(cfg.width)||2.2,wheelLocalY:car?car.params.wheelY-car.params.restLength:-.2});
+    return installGmcModel(visual,car,prepared);
+  }
+  // Preserve support for separately supplied body/wheel GLBs.
   if(!cfg.body)throw new Error('حدد مسار body في vehicle.json');
-  // Fetch all model pieces before replacing the visible placeholder.
   const wheelFiles=['frontLeft','frontRight','rearLeft','rearRight'].map(key=>cfg.wheels?.[key]||cfg.wheel||null);
   const models=await Promise.all([load(cfg.body),...wheelFiles.map(p=>p?load(p):Promise.resolve(null))]);
   const fit=(object,desired,dimension,rotation=[0,0,0])=>{

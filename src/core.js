@@ -1,9 +1,9 @@
 // Dependency-free input / controller rules; also exercised by Node tests.
 export const CONFIG = Object.freeze({
   step: 1 / 120, maxSteps: 8,
-  mass: 250, engineForce: 1100, precisionEngineForce: 750, maxSpeed: 10, precisionSpeed: 1.5,
-  reverseSpeed: 6, brakeForce: 26, coastBrake: 3.6,
-  maxSteer: .65, steerRate: 12, steerReturnRate: 16, driveResponse: 10,
+  mass: 250, engineForce: 1600, precisionEngineForce: 750, maxSpeed: 14, precisionSpeed: 1.5,
+  reverseSpeed: 8.4, brakeForce: 26, coastBrake: 3.6,
+  maxSteer: .65, steerRate: 12, steerReturnRate: 16, driveResponse: 12,
   yawAssist: 4.6, yawRateLow: .72, yawRateHigh: 1.85,
   stiffness: 70, restLength: .55, travel: .42,
   dampingRelaxation: 3.5, dampingCompression: 4.4, frictionSlip: 7.2,
@@ -16,8 +16,7 @@ export const approach = (value, target, amount) => value + clamp(target-value, -
 // Exponential response, independent of display frame rate (Hajwala-style feel).
 export const damp = (value,target,rate,dt) => value+(target-value)*(1-Math.exp(-Math.max(0,rate)*clamp(dt,0,.1)));
 export function brakeImpulse(requested,speed,mass,contacts,gravityAlongForward,dt) {
-  // RaycastVehicle solves all wheels from the same pre-brake velocity. Capping
-  // their combined impulse prevents four brakes overshooting through zero.
+  // Limit combined wheel impulses so braking does not overshoot through zero.
   const count=Math.max(1,contacts||4);
   const needed=mass*(Math.abs(speed)+Math.abs(gravityAlongForward)*dt)*.70/count;
   return Math.min(Math.max(0,requested),needed);
@@ -39,7 +38,6 @@ export function driveCommand(input, signedSpeed, params = CONFIG) {
   if (input.brake || reversing) brake = params.brakeForce;
   else if (!stationary) {
     // Negative CANNON engine force moves this +Z-forward chassis forward.
-    // Proportional target speed, not a fixed full-throttle joystick.
     const error = Math.abs(target) - speed * direction;
     const power=input.precision?(params.precisionEngineForce??params.engineForce):params.engineForce;
     if (error > .03) force = -direction * power * clamp(error / 1.2, 0, 1);
@@ -52,7 +50,6 @@ export function fixedSteps(accumulator, dt, step = CONFIG.step, maxSteps = CONFI
   let total = Math.max(0, accumulator) + clamp(dt, 0, .1);
   const count = Math.min(maxSteps, Math.floor((total + 1e-10) / step));
   total -= count * step;
-  // Discard excess backlog rather than running a spiral of death after a tab switch.
   if (count === maxSteps && total >= step) total %= step;
   return {count, accumulator: Math.max(0, total)};
 }

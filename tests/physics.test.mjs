@@ -2,6 +2,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import * as CANNON from 'cannon-es';
 import { MotriVehicle } from '../src/vehicle.js';
+import { CONFIG } from '../src/core.js';
 function setup(){
   const world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0),allowSleep:true});
   world.broadphase=new CANNON.SAPBroadphase(world);world.solver.iterations=14;
@@ -23,10 +24,10 @@ for(const mass of [25,35])test('precision drive pushes a '+mass+' unit crate wit
   assert.ok(maxY<1.2,'Car must push, not climb over the crate');
   assert.ok(box.position.z>s.car.body.position.z,'Crate must stay ahead of chassis');s.car.dispose();
 });
-test('normal driving exceeds the previous speed limit without exceeding the new one',()=>{
+test('normal driving reaches the raised speed target without exceeding it',()=>{
   const s=setup();tick(s,180);tick(s,480,{throttle:1,steer:0});
   console.log('FAST_DRIVE',JSON.stringify({speed:s.car.speed,y:s.car.body.position.y,contacts:s.car.contacts}));
-  assert.ok(s.car.speed>8&&s.car.speed<10.5);assert.ok(s.car.body.position.y<1.2);s.car.dispose();
+  assert.ok(s.car.speed>CONFIG.maxSpeed*.85&&s.car.speed<CONFIG.maxSpeed+.5);assert.ok(s.car.body.position.y<1.2);s.car.dispose();
 });
 for(const throttle of [1,-1])test('held brake stops and stays still from '+throttle,()=>{
   const s=setup();tick(s,180);tick(s,300,{throttle,steer:0});tick(s,240,{brake:true});
