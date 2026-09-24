@@ -8,7 +8,7 @@ test('reverse force is positive and slower',()=>{const r=driveCommand({throttle:
 test('back while moving forward brakes first',()=>{const r=driveCommand({throttle:-1},2);assert.equal(r.force,0);assert.equal(r.brake,CONFIG.brakeForce);assert.equal(r.reversing,true);});
 test('forward while reversing brakes first',()=>{const r=driveCommand({throttle:1},-1);assert.equal(r.force,0);assert.equal(r.brake,CONFIG.brakeForce);});
 test('brake overrides accelerator',()=>{const r=driveCommand({throttle:1,brake:true},0);assert.equal(r.force,0);assert.equal(r.brake,CONFIG.brakeForce);});
-test('precision caps forward and reverse',()=>{assert.equal(driveCommand({throttle:1,precision:true},0).target,1.5);assert.equal(driveCommand({throttle:-1,precision:true},0).target,-1.5);});
+test('precision caps forward and reverse',()=>{assert.equal(driveCommand({throttle:1,precision:true},0).target,CONFIG.precisionSpeed);assert.equal(driveCommand({throttle:-1,precision:true},0).target,-CONFIG.precisionSpeed);});
 test('partial stick sets lower target speed',()=>assert.equal(driveCommand({throttle:.25},0).target,CONFIG.maxSpeed*.25));
 test('overspeed is braked, not teleported',()=>{const r=driveCommand({throttle:1},CONFIG.maxSpeed+1);assert.equal(r.force,0);assert.ok(r.brake>0);});
 test('release has engine braking',()=>assert.ok(driveCommand({throttle:0},3).brake>0));
