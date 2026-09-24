@@ -6,12 +6,14 @@
  * GLBs, jump/boost, postprocessing or race systems are included.
  */
 import * as CANNON from 'cannon-es';
-import { CONFIG, driveCommand, approach, safeSpawn, clamp } from './core.js';
+import { CONFIG, driveCommand, clamp, damp, brakeImpulse, safeSpawn } from './core.js';
 export class MotriVehicle {
   constructor(world) {
     this.world = world;
     this.params = {...CONFIG};
     this.forward = new CANNON.Vec3();
+    this.forwardAxis = new CANNON.Vec3(0,0,1);
+    this.driveForce = 0;
     this.localPoint = new CANNON.Vec3();
     this.localQuat = new CANNON.Quaternion();
     this.inverseQuat = new CANNON.Quaternion();
@@ -19,12 +21,7 @@ export class MotriVehicle {
     this.input = {throttle:0, steer:0, brake:false, precision:false};
     const p = this.params;
     this.material = new CANNON.Material('motri-chassis');
-    // Only the chassis shell slides at contacts. Tire grip is independently
-    // handled by RaycastVehicle.frictionSlip; floor/crate friction stays .48.
-    // A real-engine A/B test found shell friction .1 pinned the car against
-    // a 35-unit crate and unloaded the front axle. Removing that tangential
-    // grab restores pushing without increasing motor power or moving objects
-    // by script. The contact normal still prevents penetration.
+    // Shell slides without locking against crates. Tire grip remains separate.
     this.contactMaterial = new CANNON.ContactMaterial(this.material, world.defaultMaterial, {friction:0,restitution:0});
     world.addContactMaterial(this.contactMaterial);
     this.body = new CANNON.Body({mass:p.mass,material:this.material,allowSleep:false});
@@ -50,32 +47,38 @@ export class MotriVehicle {
     this.checkpoint = [...CONFIG.spawn];
     this.reset();
   }
-  get speed() { this.body.quaternion.vmult(new CANNON.Vec3(0,0,1),this.forward); return this.body.velocity.dot(this.forward); }
+  get speed() { this.body.quaternion.vmult(this.forwardAxis,this.forward); return this.body.velocity.dot(this.forward); }
   get contacts() {return this.groundedCount;}
   beforeStep(dt) {
-    const cmd = driveCommand(this.input,this.speed,this.params);
-    this.steer=approach(this.steer,cmd.steer,this.params.steerRate*dt);
+    const speed=this.speed,p=this.params,cmd=driveCommand(this.input,speed,p);
+    const steeringRate=Math.abs(cmd.steer)<.001?p.steerReturnRate:p.steerRate;
+    this.steer=damp(this.steer,cmd.steer,steeringRate,dt);
     this.rig.setSteeringValue(this.steer,0);this.rig.setSteeringValue(this.steer,1);
-
-    // Hajwala-like yaw response: ease the real chassis toward a speed-dependent
-    // turn rate. Suspension, wheel contact, ramps and collision physics remain active.
-    const signedSpeed=this.speed;
-    const direction=Math.sign(Math.abs(signedSpeed)>.12?signedSpeed:(this.input.throttle||1));
-    const speedNorm=clamp(Math.abs(signedSpeed)/Math.max(this.params.maxSpeed,.001),0,1);
-    const authority=.28+.72*speedNorm;
-    const yawRate=this.params.yawRateLow+(this.params.yawRateHigh-this.params.yawRateLow)*speedNorm;
-    const targetYaw=-clamp(this.input.steer,-1,1)*direction*yawRate*authority;
-    const yawBlend=1-Math.exp(-this.params.yawAssist*dt);
-    this.body.angularVelocity.y += (targetYaw-this.body.angularVelocity.y)*yawBlend;
-
-    const w=this.rig.wheelInfos;
-    const load=w[0].suspensionForce+w[1].suspensionForce;
-    const loadFactor=cmd.force<0 ? Math.max(.35,Math.min(1,load/(this.params.mass*9.82*.2))) : 1;
+    // Keep the concurrent Hajwala-style yaw assist, but never rotate in the
+    // air, upside down or at rest. Wheel collisions and suspension remain real.
+    const q=this.body.quaternion,upY=1-2*(q.x*q.x+q.z*q.z);
+    if(this.groundedCount>=2&&Math.abs(speed)>.15&&upY>.7){
+      const t=clamp(Math.abs(speed)/p.maxSpeed,0,1);
+      const targetYaw=-clamp(this.input.steer,-1,1)*Math.sign(speed)*(p.yawRateLow+(p.yawRateHigh-p.yawRateLow)*t)*(.28+.72*t);
+      this.body.angularVelocity.y=damp(this.body.angularVelocity.y,targetYaw,p.yawAssist,dt);
+    }
+    const wheels=this.rig.wheelInfos;
+    const load=wheels[0].suspensionForce+wheels[1].suspensionForce;
+    const loadFactor=cmd.force<0?Math.max(.35,Math.min(1,load/(p.mass*9.82*.2))):1;
+    // Smooth the force, not the body position or its contact/suspension motion.
+    // Braking, release and direction changes must never retain stale motor force.
+    if(cmd.brake>0||Math.abs(this.input.throttle||0)<.015)this.driveForce=0;
+    else {
+      if(this.driveForce*cmd.force<0)this.driveForce=0;
+      this.driveForce=damp(this.driveForce,cmd.force*loadFactor,p.driveResponse,dt);
+    }
+    const braking=brakeImpulse(cmd.brake,speed,p.mass,this.groundedCount,this.world.gravity.dot(this.forward),dt);
     for(let i=0;i<4;i++) {
-      this.rig.applyEngineForce(i>=2 ? cmd.force*loadFactor : 0,i);
-      this.rig.setBrake(cmd.brake,i);
+      this.rig.applyEngineForce(i>=2?this.driveForce:0,i);
+      this.rig.setBrake(braking,i);
     }
   }
+
   afterStep(dt) {
     this.groundedCount=this.rig.wheelInfos.filter(w=>w.isInContact).length;
     const speed=this.speed;
@@ -95,7 +98,7 @@ export class MotriVehicle {
     this.body.velocity.setZero();this.body.angularVelocity.setZero();this.body.force.setZero();this.body.torque.setZero();
     this.body.previousPosition.copy(this.body.position);this.body.interpolatedPosition.copy(this.body.position);
     this.body.previousQuaternion.copy(this.body.quaternion);this.body.interpolatedQuaternion.copy(this.body.quaternion);
-    this.body.aabbNeedsUpdate=true;this.body.wakeUp();this.spin.fill(0);this.steer=0;
+    this.body.aabbNeedsUpdate=true;this.body.wakeUp();this.spin.fill(0);this.steer=0;this.driveForce=0;this.groundedCount=0;
     for(const w of this.rig.wheelInfos) { w.engineForce=0;w.brake=0;w.steering=0;w.suspensionLength=this.params.restLength;w.rotation=0; }
     this.world.broadphase.dirty=true;
   }

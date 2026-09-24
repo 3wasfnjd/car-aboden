@@ -50,11 +50,11 @@
       <button id="precision" aria-pressed="false">قيادة دقيقة</button>
       <div class="pedals">
         <button id="brake" class="pedal brake" aria-pressed="false" aria-label="الفرامل: اضغط باستمرار للتوقف"><span class="pedal-tread" aria-hidden="true"></span><b>فرامل</b></button>
-        <div id="driveLever" class="drive-lever" role="slider" tabindex="0" aria-label="الدعسة والقير: محايد" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-orientation="vertical" data-gear="N">
-          <span class="lever-label lever-d">D</span>
-          <span class="lever-line" aria-hidden="true"></span>
-          <span id="leverKnob" class="lever-knob" aria-hidden="true">N</span>
-          <span class="lever-label lever-r">R</span>
+        <div id="accelerator" class="throttle-lever" role="slider" tabindex="0" aria-label="البنزين والقير: اسحب لأعلى للتقدم ولأسفل للرجوع" aria-orientation="vertical" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-valuetext="محايد" data-drive="N">
+          <span class="lever-label forward" aria-hidden="true">↑ قدّام</span>
+          <span class="lever-track" aria-hidden="true"></span>
+          <span id="throttleKnob" aria-hidden="true"><b id="throttleMode">N</b><i></i></span>
+          <span class="lever-label reverse" aria-hidden="true">رجوع ↓</span>
         </div>
       </div>
     </div>
@@ -63,10 +63,10 @@
 </main>
 <aside id="settings" hidden>
   <header><h2>تجربة القيادة</h2><button id="closeSettings" aria-label="إغلاق الإعدادات">×</button></header>
-  <p>المقود يسار الشاشة للتوجيه فقط. يمين الشاشة متحكم واحد للدعسة والقير: ارفعه إلى D للتقدم وأنزله إلى R للرجوع، وكلما ابتعدت عن المنتصف زادت الدعسة. إذا عكست الاتجاه والسيارة تتحرك يفرمل النظام أولًا قبل التحرك بالعكس. الفرامل مستقلة. فعّل القيادة الدقيقة قرب العقبات.</p>
+  <p>المقود يسار الشاشة للتوجيه فقط. البنزين والقير في متحكم واحد يمينًا: المسه واسحب للأعلى للتقدم، أو للأسفل للرجوع. مقدار السحب يحدد السرعة؛ المنتصف ورفع الإصبع يقطعان الدعسة. عند طلب الاتجاه المعاكس أثناء الحركة تفرمل السيارة أولًا قبل تغيير اتجاهها. الفرامل مستقلة بجانبه ولها الأولوية. فعّل القيادة الدقيقة قرب العقبات.</p>
   <p class="keyboard">الكمبيوتر: WASD أو الأسهم · Space فرامل · R إعادة · P قيادة دقيقة · Esc إيقاف.</p>
   <label for="quality">جودة العرض</label><select id="quality"><option value="balanced">متوازنة</option><option value="low">خفيفة بدون ظلال</option></select>
-  <label for="speedLimit">حد السرعة التجريبي <output id="speedValue">8.4</output></label><input id="speedLimit" type="range" min="3" max="12" value="8.4" step=".2">
+  <label for="speedLimit">حد السرعة التجريبي <output id="speedValue">10.0</output></label><input id="speedLimit" type="range" min="4" max="14" value="10" step=".5">
   <p class="note">الأرقام بوحدات المحاكاة وليست سرعة سيارة لعبة حقيقية. الفيزياء تحتاج اختبارًا على الجهاز المستهدف.</p>
   <div class="setting-actions"><button id="savePoint">حفظ موضع البداية</button><button id="resetWorld">إعادة ساحة الاختبار</button></div>
   <p id="telemetry" class="telemetry" dir="ltr">— FPS · —/4 contacts</p>

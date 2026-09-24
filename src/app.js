@@ -23,11 +23,7 @@ export async function boot() {
   const notify=text=>{$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2600);};
   function resetCar(){input.reset();car.reset();accumulator=0;cameraTarget.copy(car.body.position);notify('عادت السيارة إلى نقطة البداية');}
   function showMenu(){running=false;paused=true;input.setEnabled(false);$('intro').hidden=false;$('hud').hidden=true;$('settings').hidden=true;$('start').textContent='متابعة القيادة';}
-  const input=new InputController(resetCar,()=>running?showMenu():start(),{
-    getSpeed:()=>car.body.velocity.length(),
-    onGearChange:gear=>notify(gear===1?'D · التقدم للأمام':'R · الرجوع للخلف'),
-    onGearBlocked:()=>notify('توقف وارفع إصبعك عن البنزين قبل تغيير الاتجاه'),
-  });
+  const input=new InputController(resetCar,()=>running?showMenu():start());
   input.setEnabled(false);
   function start(){if(dead)return;running=true;paused=false;everStarted=true;input.setEnabled(true);last=performance.now();accumulator=0;$('intro').hidden=true;$('hud').hidden=false;}
   $('start').disabled=false;$('start').textContent='ابدأ القيادة';$('loadState').textContent='جاهزة للتجربة • بدون كاميرا';
@@ -44,7 +40,7 @@ export async function boot() {
     car.checkpoint=safeSpawn([p.x,.72,p.z]);try{localStorage.setItem('motri-checkpoint-v1',JSON.stringify(car.checkpoint));notify('تم حفظ موضع البداية');}catch{notify('حُفظت النقطة لهذه الجلسة فقط');}
   });
   $('quality').addEventListener('change',()=>{const low=$('quality').value==='low';renderer.setPixelRatio(Math.min(devicePixelRatio||1,low?1:1.5));renderer.shadowMap.enabled=!low;resize();});
-  $('speedLimit').addEventListener('input',()=>{car.params.maxSpeed=Number($('speedLimit').value);$('speedValue').textContent=car.params.maxSpeed.toFixed(1);});
+  $('speedLimit').addEventListener('input',()=>{car.params.maxSpeed=Number($('speedLimit').value);car.params.reverseSpeed=car.params.maxSpeed*.6;$('speedValue').textContent=car.params.maxSpeed.toFixed(1);});
   function resize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
   window.addEventListener('resize',resize);resize();
   cameraTarget.copy(car.body.position);camera.position.set(12,14,-28);
