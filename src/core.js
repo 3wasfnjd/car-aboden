@@ -1,11 +1,13 @@
 // Dependency-free input / controller rules; also exercised by Node tests.
 export const CONFIG = Object.freeze({
   step: 1 / 120, maxSteps: 8,
-  mass: 250, engineForce: 750, maxSpeed: 5.2, precisionSpeed: 1.5,
-  reverseSpeed: 2.4, brakeForce: 26, coastBrake: 3.6,
-  maxSteer: .55, steerRate: 2.4,
+  // Faster, smoother adventure tune inspired by Hajwala's arcade response.
+  // Suspension/collisions stay on Motri's real four-ray vehicle.
+  mass: 250, engineForce: 1250, maxSpeed: 8.4, precisionSpeed: 2.2,
+  reverseSpeed: 4.6, brakeForce: 30, coastBrake: 2.2,
+  maxSteer: .62, steerRate: 5.4, yawAssist: 4.6, yawRateLow: .72, yawRateHigh: 1.85,
   stiffness: 70, restLength: .55, travel: .42,
-  dampingRelaxation: 3.5, dampingCompression: 4.4, frictionSlip: 6.0,
+  dampingRelaxation: 3.5, dampingCompression: 4.4, frictionSlip: 7.2,
   chassisHalf: Object.freeze([.9, .3, 1.55]), chassisLift: .5,
   wheelRadius: .42, wheelWidth: .32, wheelX: .95, wheelY: .35, wheelZ: 1.55,
   spawn: Object.freeze([0, .72, -15]),
@@ -31,10 +33,10 @@ export function driveCommand(input, signedSpeed, params = CONFIG) {
     // Negative CANNON engine force moves this +Z-forward chassis forward.
     // Proportional target speed, not a fixed full-throttle joystick.
     const error = Math.abs(target) - speed * direction;
-    if (error > 0) force = -direction * params.engineForce * clamp(error / 1.2, 0, 1);
-    else brake = Math.min(params.brakeForce * .45, -error * 5);
+    if (error > 0) force = -direction * params.engineForce * clamp(error / 2.4, .16, 1);
+    else brake = Math.min(params.brakeForce * .38, -error * 4.2);
   }
-  const steerScale = 1 / (1 + Math.max(0, Math.abs(speed)-3)*.08);
+  const steerScale = 1 / (1 + Math.max(0, Math.abs(speed)-5)*.055);
   return {force, brake, steer: -steer * params.maxSteer * steerScale, target, reversing};
 }
 export function fixedSteps(accumulator, dt, step = CONFIG.step, maxSteps = CONFIG.maxSteps) {
