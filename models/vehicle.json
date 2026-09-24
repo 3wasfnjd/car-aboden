@@ -1,7 +1,7 @@
 {
   "enabled": true,
-  "profile": "gmc-sierra-work-truck",
-  "model": "gmc_sierra_work_truck.glb",
+  "profile": "gmc-sierra-red-light",
+  "model": "gmc_sierra_red_light.glb",
   "width": 2.2,
   "credits": "CREDITS.md"
 }

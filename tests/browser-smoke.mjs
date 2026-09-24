@@ -21,14 +21,21 @@ try{
       assert.ok(file.startsWith(path.resolve('node_modules',name)+path.sep));
       await route.fulfill({status:200,contentType:'text/javascript',headers:{'access-control-allow-origin':'*'},body:await readFile(file)});
     });
-    const page=await context.newPage(),errors=[];
+    const page=await context.newPage(),errors=[],modelRequests=[];
+    page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('.glb'))modelRequests.push(request.url());});
     page.on('pageerror',e=>errors.push(e.message));
     page.on('console',m=>{if(m.type()==='error'&&/THREE|WebGL|Shader|TypeError|ReferenceError/.test(m.text()))errors.push(m.text());});
     await page.goto('http://127.0.0.1:5173/?debug',{waitUntil:'networkidle',timeout:60000});
     await page.waitForFunction(()=>window.__motri&&!document.querySelector('#start').disabled,{},{timeout:30000});
-    const model=await page.evaluate(()=>({status:window.__motri.modelStatus,hidden:!window.__motri.visual.placeholder.visible&&window.__motri.visual.wheelPlaceholders.every(w=>!w.visible),textured:!!window.__motri.visual.bodyMount.getObjectByName('GMC_Body')?.children[0].material.map,maxSpeed:window.__motri.car.params.maxSpeed}));
-    assert.equal(model.status.loaded,true,JSON.stringify(model.status));assert.equal(model.status.wheelCount,4);assert.equal(model.status.triangles,3971);
-    assert.ok(model.hidden&&model.textured,'Original textured GMC must replace all five placeholders');assert.equal(model.maxSpeed,14);
+    const model=await page.evaluate(()=>{
+      const m=window.__motri,materials=[];
+      m.visual.bodyMount.getObjectByName('GMC_Body')?.traverse(o=>{if(o.isMesh)materials.push(...(Array.isArray(o.material)?o.material:[o.material]));});
+      const paint=materials.find(x=>x.name==='Body_Red'),trim=materials.find(x=>x.name==='Trim_Tires_Lights');
+      return {status:m.modelStatus,hidden:!m.visual.placeholder.visible&&m.visual.wheelPlaceholders.every(w=>!w.visible),textured:!!trim?.map,red:!!paint&&paint.color.r>paint.color.g*10&&paint.color.r>paint.color.b*10,paintNormal:!!paint?.normalMap,maxSpeed:m.car.params.maxSpeed};
+    });
+    assert.equal(model.status.loaded,true,JSON.stringify(model.status));assert.equal(model.status.variant,'red-light');assert.equal(model.status.wheelCount,4);assert.equal(model.status.triangles,3971);
+    assert.ok(model.hidden&&model.textured&&model.red&&model.paintNormal,'Red GMC and original detail maps must replace all five placeholders');assert.equal(model.maxSpeed,14);
+    assert.equal(modelRequests.length,1,'Only the selected model should be downloaded');assert.ok(modelRequests[0].endsWith('/models/gmc_sierra_red_light.glb'));
     assert.ok(await page.locator('#fatal').isHidden());await page.screenshot({path:`artifacts/intro-${width}.png`});
     await page.locator('#start').click();await page.waitForFunction(()=>window.__motri.car.contacts===4);
     const controls=await checkDriveControls(page,context);
@@ -36,7 +43,7 @@ try{
     const stats=await page.evaluate(()=>({triangles:window.__motri.renderer.info.render.triangles,contacts:window.__motri.car.contacts,finite:[...window.__motri.car.body.position.toArray(),window.__motri.car.speed].every(Number.isFinite),fatal:!document.querySelector('#fatal').hidden}));
     assert.ok(stats.triangles>0&&stats.finite&&!stats.fatal);await page.screenshot({path:`artifacts/drive-${width}.png`});
     await page.locator('#pause').click();assert.ok(await page.locator('#intro').isVisible());await page.locator('#start').click();assert.ok(await page.locator('#hud').isVisible());
-    assert.deepEqual(errors,[]);reports.push({width,height,model,...controls,...stats});await context.close();
+    assert.deepEqual(errors,[]);reports.push({width,height,model,modelRequests,...controls,...stats});await context.close();
   }
   console.log('MOTRI_BROWSER_RESULTS '+JSON.stringify(reports));await writeFile('artifacts/browser-results.json',JSON.stringify(reports,null,2));
 }finally{await browser?.close();server.kill('SIGTERM');}
