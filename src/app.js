@@ -22,15 +22,20 @@ export async function boot() {
   const stored=readStore();car.checkpoint=safeSpawn(stored);car.reset();
   const notify=text=>{$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2600);};
   function resetCar(){input.reset();car.reset();accumulator=0;cameraTarget.copy(car.body.position);notify('عادت السيارة إلى نقطة البداية');}
-  function showMenu(){running=false;paused=true;input.reset();$('intro').hidden=false;$('hud').hidden=true;$('settings').hidden=true;$('start').textContent='متابعة القيادة';}
-  const input=new InputController(resetCar,()=>running?showMenu():start());
-  function start(){if(dead)return;running=true;paused=false;everStarted=true;input.reset();last=performance.now();accumulator=0;$('intro').hidden=true;$('hud').hidden=false;}
+  function showMenu(){running=false;paused=true;input.setEnabled(false);$('intro').hidden=false;$('hud').hidden=true;$('settings').hidden=true;$('start').textContent='متابعة القيادة';}
+  const input=new InputController(resetCar,()=>running?showMenu():start(),{
+    getSpeed:()=>car.body.velocity.length(),
+    onGearChange:gear=>notify(gear===1?'D · التقدم للأمام':'R · الرجوع للخلف'),
+    onGearBlocked:()=>notify('توقف وارفع إصبعك عن البنزين قبل تغيير الاتجاه'),
+  });
+  input.setEnabled(false);
+  function start(){if(dead)return;running=true;paused=false;everStarted=true;input.setEnabled(true);last=performance.now();accumulator=0;$('intro').hidden=true;$('hud').hidden=false;}
   $('start').disabled=false;$('start').textContent='ابدأ القيادة';$('loadState').textContent='جاهزة للتجربة • بدون كاميرا';
   $('start').addEventListener('click',start);$('pause').addEventListener('click',showMenu);$('reset').addEventListener('click',resetCar);
   $('precision').addEventListener('click',()=>{input.precision=!input.precision;$('precision').setAttribute('aria-pressed',String(input.precision));$('precision').textContent=input.precision?'قيادة دقيقة: مفعّلة':'قيادة دقيقة';notify(input.precision?'سرعة منخفضة للتحكم قرب العقبات':'القيادة العادية');});
   $('camera').addEventListener('click',()=>{camTargetYaw+=Math.PI/2;});
-  $('help').addEventListener('click',()=>{$('settings').hidden=!$('settings').hidden;input.reset();});
-  $('closeSettings').addEventListener('click',()=>{$('settings').hidden=true;});
+  $('help').addEventListener('click',()=>{$('settings').hidden=!$('settings').hidden;input.setEnabled($('settings').hidden&&running);});
+  $('closeSettings').addEventListener('click',()=>{$('settings').hidden=true;input.setEnabled(running);});
   $('resetWorld').addEventListener('click',()=>{lab.reset();car.checkpoint=[...CONFIG.spawn];try{localStorage.removeItem('motri-checkpoint-v1');}catch{}resetCar();$('mission').textContent='ادفع الصندوق البرتقالي إلى المربع الأخضر';});
   $('savePoint').addEventListener('click',()=>{
     const p=car.body.position;

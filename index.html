@@ -33,14 +33,35 @@
   <div class="mission"><span class="status-dot"></span><span id="mission">ادفع الصندوق البرتقالي إلى المربع الأخضر</span></div>
   <div class="speedbox"><b id="speed">0</b><span>%<small>السرعة</small></span><strong id="gear">N</strong></div>
   <div class="drive-controls">
-    <div class="stick-wrap"><div id="stick" role="application" aria-label="جويستك: أعلى للتقدم، أسفل للرجوع، يمين ويسار للتوجيه"><span class="stick-mark top">↑</span><span class="stick-mark bottom">↓</span><span class="stick-mark left">‹</span><span class="stick-mark right">›</span><div id="knob"></div></div><small>قدّام / رجوع · يمين / يسار</small></div>
-    <div class="right-controls"><button id="precision" aria-pressed="false">قيادة دقيقة</button><button id="brake" class="brake" aria-label="اضغط باستمرار للفرامل"><span>Ⅱ</span>فرامل</button></div>
+    <div class="steering-wrap">
+      <div id="steering" role="slider" tabindex="0" aria-label="المقود: اسحب يمينًا أو يسارًا؛ أو استخدم الأسهم" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-orientation="horizontal">
+        <svg id="steeringWheel" viewBox="0 0 160 160" aria-hidden="true">
+          <circle class="wheel-halo" cx="80" cy="80" r="74"/>
+          <circle class="wheel-rim" cx="80" cy="80" r="59"/>
+          <path class="wheel-spoke" d="M28 63L66 76M132 63L94 76M80 139V94"/>
+          <circle class="wheel-hub" cx="80" cy="80" r="21"/>
+          <path class="wheel-notch" d="M80 16V28"/>
+          <circle class="wheel-bolt" cx="80" cy="80" r="5"/>
+        </svg>
+      </div>
+      <small>اسحب المقود يمينًا / يسارًا</small>
+    </div>
+    <div class="right-controls">
+      <div class="drive-options">
+        <button id="precision" aria-pressed="false">قيادة دقيقة</button>
+        <button id="direction" class="direction" data-gear="D" aria-pressed="false" aria-label="الاتجاه: تقدم. اضغط لاختيار الرجوع للخلف"><span class="drive" aria-hidden="true">D</span><span class="reverse" aria-hidden="true">R</span></button>
+      </div>
+      <div class="pedals">
+        <button id="brake" class="pedal brake" aria-pressed="false" aria-label="الفرامل: اضغط باستمرار للتوقف"><span class="pedal-tread" aria-hidden="true"></span><b>فرامل</b></button>
+        <button id="accelerator" class="pedal accelerator" aria-pressed="false" aria-label="البنزين: اضغط واسحب لأعلى لزيادة السرعة، وارفع إصبعك للتوقف"><span class="pedal-tread" aria-hidden="true"></span><b>بنزين</b></button>
+      </div>
+    </div>
     <div class="bottom-tools"><button id="reset" aria-label="إعادة السيارة">↻ <span>إعادة السيارة</span></button><button id="camera" aria-label="تغيير زاوية الكاميرا">◈ <span>الكاميرا</span></button></div>
   </div>
 </main>
 <aside id="settings" hidden>
   <header><h2>تجربة القيادة</h2><button id="closeSettings" aria-label="إغلاق الإعدادات">×</button></header>
-  <p>اسحب لأعلى للتقدم ولأسفل للرجوع، وحرك الجويستك يمينًا أو يسارًا للتوجيه. مقدار السحب يتحكم بالسرعة. فعّل القيادة الدقيقة قرب العقبات.</p>
+  <p>المقود يسار الشاشة للتوجيه فقط: اسحبه يمينًا أو يسارًا، ويعود للوسط عند تركه. البنزين والفرامل يمين الشاشة ويمكن استخدامهما مع المقود بإصبعين. اضغط أسفل البنزين لسرعة خفيفة واسحب لأعلى لزيادتها؛ الفرامل تتغلب على البنزين ولا تُرجع السيارة للخلف. للرجوع توقف وارفع إصبعك عن البنزين ثم اختر R، وللتقدم اختر D. فعّل القيادة الدقيقة قرب العقبات.</p>
   <p class="keyboard">الكمبيوتر: WASD أو الأسهم · Space فرامل · R إعادة · P قيادة دقيقة · Esc إيقاف.</p>
   <label for="quality">جودة العرض</label><select id="quality"><option value="balanced">متوازنة</option><option value="low">خفيفة بدون ظلال</option></select>
   <label for="speedLimit">حد السرعة التجريبي <output id="speedValue">5.2</output></label><input id="speedLimit" type="range" min="2" max="8" value="5.2" step=".2">

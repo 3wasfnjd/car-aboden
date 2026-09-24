@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { checkDriveControls } from './drive-controls.mjs';
 const server=spawn(process.execPath,['scripts/serve.mjs'],{stdio:'inherit'});
 let browser;
 const reports=[];
@@ -17,7 +18,7 @@ try {
   }
   assert.ok(up,'Local server must start');
   browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
-  for(const [width,height] of [[390,844],[844,390]]){
+  for(const [width,height] of [[320,568],[390,844],[844,390]]){
     const context=await browser.newContext({viewport:{width,height},hasTouch:true,isMobile:true,deviceScaleFactor:1});
     await context.route('https://cdn.jsdelivr.net/npm/**',async route=>{
       const u=new URL(route.request().url());
@@ -47,18 +48,7 @@ try {
     const moved=await page.evaluate(()=>window.__motri.car.body.position.z);
     await page.locator('#reset').click();
     await page.waitForFunction(()=>window.__motri.car.contacts===4);
-    // Actual two-touch input: steering and brake must coexist and release cleanly.
-    const a=await page.locator('#stick').boundingBox(),b=await page.locator('#brake').boundingBox();
-    const finger={id:1,x:a.x+a.width/2,y:a.y+a.height*.25};
-    const brake={id:2,x:b.x+b.width/2,y:b.y+b.height/2};
-    const cdp=await context.newCDPSession(page);
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[finger]});
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[finger,brake]});
-    const pressed=await page.evaluate(()=>window.__motri.input.read());
-    assert.ok(pressed.throttle>.5&&pressed.brake,'Two fingers must drive and brake together');
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-    const released=await page.evaluate(()=>window.__motri.input.read());
-    assert.equal(released.throttle,0);assert.equal(released.brake,false);
+    const controls=await checkDriveControls(page,context);
     await page.locator('#precision').click();
     assert.equal(await page.locator('#precision').getAttribute('aria-pressed'),'true');
     const stats=await page.evaluate(()=>({triangles:window.__motri.renderer.info.render.triangles,contacts:window.__motri.car.contacts,finite:[...window.__motri.car.body.position.toArray(),window.__motri.car.speed].every(Number.isFinite),fatal:!document.querySelector('#fatal').hidden}));
@@ -67,7 +57,7 @@ try {
     await page.locator('#pause').click();assert.ok(await page.locator('#intro').isVisible());
     await page.locator('#start').click();assert.ok(await page.locator('#hud').isVisible());
     assert.deepEqual(errors,[]);
-    reports.push({width,height,moveDistance:moved-before,twoTouch:true,...stats});
+    reports.push({width,height,moveDistance:moved-before,...controls,...stats});
     await context.close();
   }
   console.log('MOTRI_BROWSER_RESULTS '+JSON.stringify(reports));
