@@ -25,7 +25,21 @@ export async function checkDriveControls(page,context) {
     await page.evaluate(()=>new Promise(requestAnimationFrame));
   };
   const read=()=>page.evaluate(()=>window.__motri.input.read());
-  const stopped=()=>page.waitForFunction(()=>window.__motri.car.contacts===4&&window.__motri.car.body.velocity.length()<.15,{},{timeout:15000});
+  const stopped=async()=>{
+    try {await page.waitForFunction(()=>window.__motri.car.contacts===4&&window.__motri.car.body.velocity.length()<.15,{},{timeout:15000});}
+    catch(error) {
+      console.log('STOP_DIAGNOSTICS',await page.evaluate(()=>{
+        const m=window.__motri;
+        return {input:m.input.read(),enabled:m.input.enabled,owners:[...m.input.pointers],
+          position:m.car.body.position.toArray(),velocity:m.car.body.velocity.toArray(),
+          speed:m.car.speed,contacts:m.car.contacts,carInput:m.car.input,
+          wheels:m.car.rig.wheelInfos.map(w=>({brake:w.brake,force:w.engineForce,load:w.suspensionForce})),
+          menu:!document.querySelector('#intro').hidden,fatal:!document.querySelector('#fatal').hidden};
+      }));
+      await page.screenshot({path:`artifacts/stopping-${viewport.width}.png`});
+      throw error;
+    }
+  };
 
   await touch('touchStart',[finger]);finger.x+=a.width*.25;await touch('touchMove',[finger]);
   let r=await read();assert.ok(r.steer>.5);assert.equal(r.throttle,0,'Steering must never accelerate');
