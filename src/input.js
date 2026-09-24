@@ -49,7 +49,7 @@ export class InputController {
     this.paintLever();this.paintBrake();
   }
   setSteer(value){this.steer=clamp(value,-1,1);this.wheelGraphic.style.transform=`rotate(${this.steer*112}deg)`;this.wheel.setAttribute('aria-valuenow',String(Math.round(this.steer*100)));}
-  paintLever(){const v=clamp(this.throttle,-1,1);this.lever.dataset.gear=v>.075?'D':v<-.075?'R':'N';this.lever.setAttribute('aria-valuenow',String(Math.round(v*100)));this.lever.setAttribute('aria-label',v>.075?'الدعسة والقير: تقدم':v<-.075?'الدعسة والقير: رجوع للخلف':'الدعسة والقير: محايد');}
+  paintLever(){const v=clamp(this.throttle,-1,1),gear=v>.075?'D':v<-.075?'R':'N';this.lever.dataset.gear=gear;this.leverKnob.textContent=gear;this.lever.setAttribute('aria-valuenow',String(Math.round(v*100)));this.lever.setAttribute('aria-label',gear==='D'?'الدعسة والقير: تقدم':gear==='R'?'الدعسة والقير: رجوع للخلف':'الدعسة والقير: محايد');}
   paintBrake(){this.brakeButton.classList.toggle('active',this.brake);this.brakeButton.setAttribute('aria-pressed',String(this.brake));}
   setEnabled(enabled){this.reset();this.enabled=Boolean(enabled);}
   reset(){const owned=[...this.pointers];this.pointers.clear();this.keys.clear();this.throttle=0;this.brake=false;this.wheel.classList.remove('active');this.lever.classList.remove('active');this.setSteer(0);this.leverKnob.style.transform='';for(const [name,id] of owned){const el=name==='steering'?this.wheel:name==='lever'?this.lever:this.brakeButton;if(el.hasPointerCapture(id))el.releasePointerCapture(id);}this.paintLever();this.paintBrake();}
