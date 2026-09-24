@@ -19,7 +19,13 @@ export class MotriVehicle {
     this.input = {throttle:0, steer:0, brake:false, precision:false};
     const p = this.params;
     this.material = new CANNON.Material('motri-chassis');
-    this.contactMaterial = new CANNON.ContactMaterial(this.material, world.defaultMaterial, {friction:.1,restitution:0});
+    // Only the chassis shell slides at contacts. Tire grip is independently
+    // handled by RaycastVehicle.frictionSlip; floor/crate friction stays .48.
+    // A real-engine A/B test found shell friction .1 pinned the car against
+    // a 35-unit crate and unloaded the front axle. Removing that tangential
+    // grab restores pushing without increasing motor power or moving objects
+    // by script. The contact normal still prevents penetration.
+    this.contactMaterial = new CANNON.ContactMaterial(this.material, world.defaultMaterial, {friction:0,restitution:0});
     world.addContactMaterial(this.contactMaterial);
     this.body = new CANNON.Body({mass:p.mass,material:this.material,allowSleep:false});
     this.body.addShape(new CANNON.Box(new CANNON.Vec3(...p.chassisHalf)), new CANNON.Vec3(0,p.chassisLift,0));
@@ -50,7 +56,6 @@ export class MotriVehicle {
     const cmd = driveCommand(this.input,this.speed,this.params);
     this.steer=approach(this.steer,cmd.steer,this.params.steerRate*dt);
     this.rig.setSteeringValue(this.steer,0);this.rig.setSteeringValue(this.steer,1);
-    // Preserve axle-load anti-wheelie behavior from the donor, with a floor for ramps.
     const w=this.rig.wheelInfos;
     const load=w[0].suspensionForce+w[1].suspensionForce;
     const loadFactor=cmd.force<0 ? Math.max(.35,Math.min(1,load/(this.params.mass*9.82*.2))) : 1;
