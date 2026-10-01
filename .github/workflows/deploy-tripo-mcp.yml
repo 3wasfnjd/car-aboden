@@ -1,0 +1,45 @@
+name: Deploy Tripo MCP
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install MCP bridge dependencies
+        working-directory: tools/tripo-mcp
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Deploy Tripo MCP Worker
+        working-directory: tools/tripo-mcp
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Store Tripo API key in Cloudflare
+        working-directory: tools/tripo-mcp
+        run: printf '%s' "$TRIPO_API_KEY" | npx wrangler secret put TRIPO_API_KEY
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TRIPO_API_KEY: ${{ secrets.TRIPO_API_KEY }}
+
+      - name: Store MCP bridge token in Cloudflare
+        working-directory: tools/tripo-mcp
+        run: printf '%s' "$BRIDGE_TOKEN" | npx wrangler secret put BRIDGE_TOKEN
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BRIDGE_TOKEN: ${{ secrets.BRIDGE_TOKEN }}
