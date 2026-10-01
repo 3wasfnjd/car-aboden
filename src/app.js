@@ -5,6 +5,7 @@ import { CarVisual } from './visuals.js';
 import { TestWorld } from './world.js';
 import { InputController } from './input.js';
 import { loadVehicleModel } from './models.js';
+import { loadFlowerKinds, FlowerEffects } from './flowers.js';
 export async function boot() {
   const $=id=>document.getElementById(id),canvas=$('view');
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
@@ -32,6 +33,12 @@ export async function boot() {
     try {modelStatus=await loadVehicleModel(visual,'models/vehicle.json',car);}
     catch(e){console.warn(e);modelStatus={loaded:false,error:e.message};}
   }
+  // Flowers land on the lab's top surface under the drop point.
+  let flowers=null;const groundRay=new THREE.Raycaster(),downRay=new THREE.Vector3(0,-1,0),rayOrigin=new THREE.Vector3();
+  const groundAt=(x,z)=>{groundRay.set(rayOrigin.set(x,20,z),downRay);const hit=groundRay.intersectObjects(lab.meshes,false)[0];return hit?hit.point.y:0;};
+  if(!window.MOTRI_SINGLE_FILE){
+    try{flowers=new FlowerEffects({visual,kinds:await loadFlowerKinds('models/flowers/'),ground:groundAt});}catch(e){console.warn(e);}
+  }
   function start(){if(dead)return;running=true;paused=false;everStarted=true;input.setEnabled(true);last=performance.now();accumulator=0;$('intro').hidden=true;$('hud').hidden=false;}
   $('start').disabled=false;$('start').textContent='ابدأ القيادة';
   $('loadState').textContent=modelStatus.loaded?'GMC جاهزة • أربع عجلات متحركة':modelStatus.error?'تعذر تحميل GMC؛ السيارة المؤقتة متاحة: '+modelStatus.error:'جاهزة للتجربة • بدون كاميرا';
@@ -39,9 +46,10 @@ export async function boot() {
   $('start').addEventListener('click',start);$('pause').addEventListener('click',showMenu);$('reset').addEventListener('click',resetCar);
   $('precision').addEventListener('click',()=>{input.precision=!input.precision;$('precision').setAttribute('aria-pressed',String(input.precision));$('precision').textContent=input.precision?'قيادة دقيقة: مفعّلة':'قيادة دقيقة';notify(input.precision?'سرعة منخفضة للتحكم قرب العقبات':'القيادة العادية');});
   $('camera').addEventListener('click',()=>{camTargetYaw+=Math.PI/2;});
+  $('flowersBtn').addEventListener('click',()=>{if(!flowers){notify('الورود غير متاحة في هذه النسخة');return;}flowers.enabled=!flowers.enabled;$('flowersBtn').setAttribute('aria-pressed',String(flowers.enabled));notify(flowers.enabled?'نثر الورود يعمل':'توقف نثر الورود');});
   $('help').addEventListener('click',()=>{$('settings').hidden=!$('settings').hidden;input.setEnabled($('settings').hidden&&running);});
   $('closeSettings').addEventListener('click',()=>{$('settings').hidden=true;input.setEnabled(running);});
-  $('resetWorld').addEventListener('click',()=>{lab.reset();car.checkpoint=[...CONFIG.spawn];try{localStorage.removeItem('motri-checkpoint-v1');}catch{}resetCar();$('mission').textContent='ادفع الصندوق البرتقالي إلى المربع الأخضر';});
+  $('resetWorld').addEventListener('click',()=>{lab.reset();flowers?.clearTrail();car.checkpoint=[...CONFIG.spawn];try{localStorage.removeItem('motri-checkpoint-v1');}catch{}resetCar();$('mission').textContent='ادفع الصندوق البرتقالي إلى المربع الأخضر';});
   $('savePoint').addEventListener('click',()=>{
     const p=car.body.position;
     if(Math.abs(p.x)>3||p.z>-9||p.z< -22||p.y>1.5){notify('احفظ نقطة البداية في المساحة الخالية قبل المسارات');return;}
@@ -68,6 +76,7 @@ export async function boot() {
         if(up.y<.12&&Math.abs(car.speed)<.2){autoResetAt+=dt;if(autoResetAt>3){resetCar();autoResetAt=0;}}else autoResetAt=0;
       }
       visual.sync(car);
+      if(running)flowers?.update(dt,{speed:car.speed,maxSpeed:car.params.maxSpeed,velocity:car.body.velocity});
       const smoothing=1-Math.exp(-5*dt);cameraTarget.lerp(new THREE.Vector3(car.body.position.x,car.body.position.y+.25,car.body.position.z),smoothing||1);
       camYaw+=(camTargetYaw-camYaw)*(1-Math.exp(-3*dt));
       desired.set(Math.sin(camYaw)*15,12.5,Math.cos(camYaw)*15).add(cameraTarget);
@@ -84,7 +93,7 @@ export async function boot() {
       }
     }catch(e){console.error(e);renderer.setAnimationLoop(null);running=false;$('fatal').hidden=false;$('fatalText').textContent='تعذر استكمال التشغيل: '+e.message;}
   });
-  if(new URLSearchParams(location.search).has('debug'))window.__motri={car,lab,input,scene,renderer,visual,modelStatus,start,resetCar};
+  if(new URLSearchParams(location.search).has('debug'))window.__motri={car,lab,input,scene,renderer,visual,modelStatus,start,resetCar,flowers};
   window.addEventListener('pagehide',e=>{if(e.persisted){running=false;input.reset();return;}dead=true;renderer.setAnimationLoop(null);input.dispose();visual.dispose();car.dispose();renderer.dispose();});
   window.addEventListener('pageshow',e=>{if(e.persisted)showMenu();});
 }

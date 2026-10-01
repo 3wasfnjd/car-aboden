@@ -76,7 +76,7 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
         </div>
       </div>
     </div>
-    <div class="bottom-tools"><button id="reset" aria-label="إعادة السيارة لمكانها">↻ <span>إعادة السيارة</span></button><button id="move" aria-label="نقل السيارة لمكان آخر">⌖ <span>نقل السيارة</span></button></div>
+    <div class="bottom-tools"><button id="reset" aria-label="إعادة السيارة لمكانها">↻ <span>إعادة السيارة</span></button><button id="move" aria-label="نقل السيارة لمكان آخر">⌖ <span>نقل السيارة</span></button><button id="flowersBtn" aria-pressed="true" aria-label="نثر الورود أثناء القيادة">🌹 <span>نثر الورود</span></button></div>
   </div>
 </main>
 <section id="arIntro">
@@ -100,6 +100,7 @@ import { MotriVehicle } from '../src/vehicle.js';
 import { CarVisual } from '../src/visuals.js';
 import { InputController } from '../src/input.js';
 import { loadVehicleModel } from '../src/models.js';
+import { loadFlowerKinds, FlowerEffects } from '../src/flowers.js';
 window.THREE=THREE;
 
 function syncViewport(){
@@ -133,7 +134,7 @@ const MAX_DISTANCE=120;
 // Same top speed as the game lab: about 0.95 m/s at the default 35 cm size.
 const AR_MAX_SPEED=14;
 let sizeIndex=3,carLength=5,placed=false,sceneReady=false,xrReady=false,xrStarted=false,failed=false;
-let scene,camera,renderer,anchor,visual,car,input,world,sun,shadowPlane,reticle;
+let scene,camera,renderer,anchor,visual,car,input,world,sun,shadowPlane,reticle,flowers=null;
 let trackingNormalSince=null,trackingLastSeen=-Infinity,trackingStatus='LIMITED';
 let lastTick=0,accumulator=0,stableSince=null,toastTimer=0;
 const ray=new THREE.Raycaster(),centre=new THREE.Vector2(0,0),ground=new THREE.Plane(new THREE.Vector3(0,1,0),0);
@@ -177,8 +178,10 @@ async function setupScene(){
   try{status=await loadVehicleModel(visual,'../models/vehicle.json',car);}catch(e){console.warn(e);notify('تعذر تحميل GMC؛ تظهر السيارة المؤقتة');}
   visual.sync(car);
   const box=new THREE.Box3().setFromObject(visual.root);carLength=Math.max(1,box.max.z-box.min.z);
+  // Flowers ride in the bed and drop behind the car; the AR floor is Y=0.
+  try{flowers=new FlowerEffects({visual,kinds:await loadFlowerKinds('../models/flowers/')});}catch(e){console.warn(e);}
   showSize();
-  window.__motriAr={car,visual,anchor,status,get placed(){return placed;}};
+  window.__motriAr={car,visual,anchor,status,get flowers(){return flowers;},get placed(){return placed;}};
   sceneReady=true;lastTick=performance.now();
   $('arIntro').hidden=true;setStatus('وجّه الجوال للأرض وحرّكه ببطء');
 }
@@ -192,7 +195,7 @@ function place(){
   setStatus('سُق السيارة',true);
 }
 function move(){
-  placed=false;input.setEnabled(false);resetCar();
+  placed=false;input.setEnabled(false);resetCar();flowers?.clearTrail();
   $('driveControls').hidden=true;$('placement').hidden=false;stableSince=null;
   setStatus('وجّه الجوال للمكان الجديد');
 }
@@ -229,6 +232,7 @@ function tick(now){
     if($('arStatus').classList.contains('ready')===false)setStatus('سُق السيارة',true);
   }else if(placed){accumulator=0;setStatus('التتبع ضعيف — وجّه الجوال للأرض ببطء');}
   visual.sync(car);
+  if(placed)flowers?.update(dt,{speed:car.speed,maxSpeed:car.params.maxSpeed,velocity:car.body.velocity});
   visual.root.getWorldPosition(tmp);
   sun.target.position.copy(tmp);sun.position.copy(tmp).add(new THREE.Vector3(.6,2,.4));
 }
@@ -266,6 +270,7 @@ $('startBtn').addEventListener('click',()=>{
 });
 $('placeBtn').addEventListener('click',place);
 $('move').addEventListener('click',move);
+$('flowersBtn').addEventListener('click',()=>{if(!flowers)return;flowers.enabled=!flowers.enabled;$('flowersBtn').setAttribute('aria-pressed',String(flowers.enabled));notify(flowers.enabled?'نثر الورود يعمل':'توقف نثر الورود');});
 $('reset').addEventListener('click',()=>{resetCar();notify('رجعت السيارة لمكانها');});
 $('sizeDown').addEventListener('click',()=>{sizeIndex=Math.max(0,sizeIndex-1);showSize();});
 $('sizeUp').addEventListener('click',()=>{sizeIndex=Math.min(SIZES.length-1,sizeIndex+1);showSize();});
