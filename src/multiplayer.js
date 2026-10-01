@@ -1,10 +1,13 @@
 // Room connection for the Jood multiplayer relay (tools/jood-multiplayer).
 // Each phone sends its car pose ~12 times a second; poses are relative to the
 // player's own placed stage, so every player sees all cars on their own floor.
+// Everyone joins the public room automatically; when it is full (4 players)
+// the client moves on to the next public room.
 
 const CODE_CHARS='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const newRoomCode=()=>Array.from({length:4},()=>CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 export const cleanRoomCode=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
+export const PUBLIC_ROOMS=Array.from({length:9},(_,i)=>'JOOD'+(i+1));
 
 // Server URL: ?server= in the page URL, else multiplayer.json next to the site root.
 export async function multiplayerServer(base='../') {
@@ -21,14 +24,16 @@ export function carState(car,flowersOn=true) {
 }
 
 export class RoomClient {
-  constructor({server,room,name,car,on={}}) {
-    Object.assign(this,{server,room,name,car,on});this.ws=null;this.closed=false;this.retry=0;this.id=null;this.slot=0;this.peers=new Map();
+  // rooms: codes to try in order (a full room refuses the socket before it opens).
+  constructor({server,rooms,name,car,on={}}) {
+    Object.assign(this,{server,rooms,name,car,on});this.index=0;this.ws=null;this.closed=false;this.retry=0;this.id=null;this.slot=0;this.peers=new Map();
   }
+  get room(){return this.rooms[this.index];}
   get connected(){return this.ws?.readyState===1;}
   connect() {
     const url=this.server.replace(/^http/,'ws')+'/room/'+this.room+'?name='+encodeURIComponent(this.name)+'&car='+this.car;
-    const ws=new WebSocket(url);this.ws=ws;this.on.status?.('connecting');
-    ws.onopen=()=>{this.retry=0;this.on.status?.('open');};
+    const ws=new WebSocket(url);this.ws=ws;this.on.status?.('connecting');let opened=false;
+    ws.onopen=()=>{opened=true;this.retry=0;this.on.status?.('open');};
     ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
       if(m.t==='welcome'){this.id=m.id;this.slot=m.slot;this.peers.clear();for(const p of m.peers)this.peers.set(p.id,p);this.on.welcome?.(m);}
       else if(m.t==='join'){this.peers.set(m.id,m);this.on.join?.(m);}
@@ -38,8 +43,10 @@ export class RoomClient {
     ws.onclose=e=>{
       for(const id of [...this.peers.keys()])this.on.leave?.({id});this.peers.clear();
       if(this.closed)return;
-      if(e.code===1006&&this.retry===0)this.on.status?.('lost');
-      // Back off and rejoin (a full room or a dropped network both land here).
+      // Refused before opening: probably full, so try the next room right away.
+      if(!opened&&this.index<this.rooms.length-1){this.index++;this.timer=setTimeout(()=>this.connect(),150);return;}
+      if(!opened)this.index=0;
+      // Back off and rejoin after a dropped network (or every room full).
       const wait=Math.min(8000,700*2**this.retry++);this.on.status?.('retry');this.timer=setTimeout(()=>this.connect(),wait);
     };
     ws.onerror=()=>{};
