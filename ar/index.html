@@ -52,6 +52,10 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
 #fwdBtn{width:96px;height:96px}#revBtn{width:64px;height:64px}#revBtn b{font-size:20px}#revBtn small{font-size:9px;margin-top:-6px}
 #fwdBtn[aria-pressed=true]{background:#2a9d78;border-color:#d8fff0;box-shadow:0 0 0 6px #2a9d7840,0 0 22px #5ef2c070;animation:cruise 1.6s ease-in-out infinite}
 #revBtn.active{background:#c4782f;transform:scale(.94)}
+/* Steering: two hold buttons on the left (physical sides fixed in RTL). */
+.steer-buttons{position:absolute;left:max(18px,env(safe-area-inset-left));bottom:calc(max(14px,env(safe-area-inset-bottom)) + 40px);display:flex;gap:14px;direction:ltr;pointer-events:auto}
+.steer-buttons .drive-btn{width:80px;height:80px}.steer-buttons .drive-btn b{font-size:30px}
+.steer-buttons .drive-btn.active{background:#2f6fb0;border-color:#dbeeff;transform:scale(.94)}
 @keyframes cruise{50%{box-shadow:0 0 0 10px #2a9d7820,0 0 30px #5ef2c050}}
 </style>
 </head>
@@ -71,7 +75,11 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
     <button id="placeBtn" disabled>ثبّت السيارة هنا</button>
   </section>
   <div class="drive-controls" id="driveControls" hidden>
-    <div class="steering-wrap">
+    <div class="steer-buttons">
+      <button id="leftBtn" class="drive-btn" aria-label="يسار: اضغط باستمرار"><b>◀</b></button>
+      <button id="rightBtn" class="drive-btn" aria-label="يمين: اضغط باستمرار"><b>▶</b></button>
+    </div>
+    <div class="steering-wrap" hidden>
       <div id="steering" role="slider" tabindex="0" aria-label="المقود: اسحب يمينًا أو يسارًا" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-orientation="horizontal">
         <svg id="steeringWheel" viewBox="0 0 160 160" aria-hidden="true">
           <circle class="wheel-halo" cx="80" cy="80" r="74"/>
@@ -174,7 +182,7 @@ const showMenu=open=>{$('menu').hidden=!open;$('menuBtn').setAttribute('aria-exp
 let steerSmooth=0;
 function smoothInput(raw,dt){
   const curved=Math.sign(raw.steer)*Math.pow(Math.abs(raw.steer),1.7);
-  steerSmooth=damp(steerSmooth,curved,curved===0?8:5.5,dt);
+  steerSmooth=damp(steerSmooth,curved,curved===0?8:4.5,dt);
   if(Math.abs(steerSmooth)<.002)steerSmooth=0;
   return {...raw,steer:steerSmooth};
 }
@@ -228,8 +236,9 @@ async function setupScene(){
 // Forward latch and held reverse replace the lever's throttle in AR.
 let cruise=false,reversing=false;
 function setCruise(on){cruise=on;$('fwdBtn').setAttribute('aria-pressed',String(on));}
-function driveInput(raw){return {...raw,throttle:reversing?-1:cruise?1:0,brake:false};}
-function stopDrive(){setCruise(false);reversing=false;$('revBtn').classList.remove('active');}
+const steerHeld={left:false,right:false};
+function driveInput(raw){return {...raw,steer:Number(steerHeld.right)-Number(steerHeld.left),throttle:reversing?-1:cruise?1:0,brake:false};}
+function stopDrive(){setCruise(false);reversing=false;steerHeld.left=steerHeld.right=false;for(const id of ['revBtn','leftBtn','rightBtn'])$(id).classList.remove('active');}
 function resetCar(){input?.reset();stopDrive();car.reset();accumulator=0;steerSmooth=0;visual.sync(car);}
 
 function place(){
@@ -326,6 +335,11 @@ $('fwdBtn').addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)ret
   const rev=$('revBtn'),release=e=>{if(rev.hasPointerCapture?.(e.pointerId))rev.releasePointerCapture(e.pointerId);reversing=false;rev.classList.remove('active');};
   rev.addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;rev.setPointerCapture(e.pointerId);reversing=true;setCruise(false);rev.classList.add('active');});
   ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>rev.addEventListener(ev,release));
+}
+for(const [id,side] of [['leftBtn','left'],['rightBtn','right']]){
+  const b=$(id),release=e=>{if(b.hasPointerCapture?.(e.pointerId))b.releasePointerCapture(e.pointerId);steerHeld[side]=false;b.classList.remove('active');};
+  b.addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;b.setPointerCapture(e.pointerId);steerHeld[side]=true;b.classList.add('active');});
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,release));
 }
 window.addEventListener('blur',stopDrive);
 $('driveControls').hidden=true;
