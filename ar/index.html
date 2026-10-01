@@ -347,10 +347,10 @@ function setCruise(on){cruise=on;$('fwdBtn').setAttribute('aria-pressed',String(
 const steerHeld={left:false,right:false};
 // Autopilot: ⭕ circle → 💗 heart → off. The path sits on the floor about a
 // metre in front of the phone (never tighter than the car can turn) and slowly
-// follows the phone; dotted pink marks show it. Any drive button cancels it.
+// follows the phone. The path itself is not drawn. Any drive button cancels it.
 const autopilot=new Autopilot(),AUTO_MODES=[null,'circle','heart'],AUTO_LABEL={circle:'⭕ دائرة',heart:'💗 قلب'};
-let autoMode=0,pathDots=null;
-const camPos=new THREE.Vector3(),camDir=new THREE.Vector3(),apA=new THREE.Vector3(),apB=new THREE.Vector3(),dotM=new THREE.Matrix4();
+let autoMode=0;
+const camPos=new THREE.Vector3(),camDir=new THREE.Vector3(),apA=new THREE.Vector3(),apB=new THREE.Vector3();
 let autoOffset=new THREE.Vector3();
 // Path centre in world space: where the phone points on the floor when the mode
 // starts, then kept at that offset from the phone (it follows when you walk,
@@ -371,29 +371,22 @@ function autoFrame(start){
   apB.copy(apA).add(autoOffset.clone().normalize());const f=anchor.worldToLocal(apB.clone()).sub(c);f.y=0;f.normalize();
   return {center:{x:c.x,z:c.z},forward:{x:f.x,z:f.z},right:{x:-f.z,z:f.x}};
 }
-function showPath(on){
-  if(!pathDots){pathDots=new THREE.InstancedMesh(new THREE.CircleGeometry(.16,14).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xff7cb1,transparent:true,opacity:.65,depthWrite:false}),72);anchor.add(pathDots);}
-  pathDots.visible=on;if(!on)return;
-  const pts=autopilot.points,step=pts.length/pathDots.count;
-  for(let i=0;i<pathDots.count;i++){const p=pts[Math.floor(i*step)];dotM.makeTranslation(p.x,.03,p.z);pathDots.setMatrixAt(i,dotM);}
-  pathDots.instanceMatrix.needsUpdate=true;
-}
 function setAuto(mode){
   autoMode=mode;const shape=AUTO_MODES[mode];
   $('autoBtn').setAttribute('aria-pressed',String(!!shape));$('autoLabel').textContent=shape?AUTO_LABEL[shape]:'آلي';
-  if(!shape){autopilot.stop();showPath(false);return;}
+  if(!shape){autopilot.stop();return;}
   setCruise(false);reversing=false;steerHeld.left=steerHeld.right=false;
   const s=scale(),wheelbase=car.params.wheelZ*2,turn=wheelbase/Math.tan(car.params.maxSteer);
   const size=Math.max((shape==='circle'?.45:.6)/s,turn*(shape==='circle'?1.35:1.8)),frame=autoFrame(true);
   car.body.quaternion.vmult(new CANNON.Vec3(0,0,1),fwdVec);
-  autopilot.start(shape,{...frame,size,heading:{x:fwdVec.x,z:fwdVec.z}});showPath(true);
+  autopilot.start(shape,{...frame,size,heading:{x:fwdVec.x,z:fwdVec.z}});
   notify(shape==='circle'?'تدور في دائرة قدّامك ⭕':'ترسم قلب قدّامك 💗');
 }
 const fwdVec=new CANNON.Vec3();
 function autoInput(dt){
   // Let the path drift toward the spot in front of the phone.
   const frame=autoFrame(false),k=1-Math.exp(-.6*dt);
-  autopilot.setCenter({x:autopilot.center.x+(frame.center.x-autopilot.center.x)*k,z:autopilot.center.z+(frame.center.z-autopilot.center.z)*k});showPath(true);
+  autopilot.setCenter({x:autopilot.center.x+(frame.center.x-autopilot.center.x)*k,z:autopilot.center.z+(frame.center.z-autopilot.center.z)*k});
   car.body.quaternion.vmult(new CANNON.Vec3(0,0,1),fwdVec);
   return autopilot.update(car.body.position,fwdVec,{lookahead:Math.max(4,autopilot.size*.45)});
 }
