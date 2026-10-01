@@ -45,7 +45,14 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
 #arStatus{top:max(16px,env(safe-area-inset-top))}
 #hud .steering-wrap{opacity:.88}#hud .steering-wrap small,#hud .lever-label{display:none}
 #hud .right-controls{width:auto}#hud .pedals{justify-content:flex-end}
-#hud .throttle-lever{background:#f7f6eab8}#hud .lever-track{top:14px;bottom:14px}
+/* Forward is a latch (tap on, tap off); reverse works only while held. */
+.drive-buttons{position:absolute;right:max(18px,env(safe-area-inset-right));bottom:calc(max(14px,env(safe-area-inset-bottom)) + 40px);display:flex;flex-direction:column;align-items:center;gap:14px;pointer-events:auto}
+.drive-btn{border:2px solid #ffffffb0;border-radius:50%;background:#10201ab8;color:#fff;display:grid;place-items:center;padding:0;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:background .15s,transform .1s,box-shadow .2s}
+.drive-btn>*{pointer-events:none}.drive-btn b{font-size:30px;line-height:1}.drive-btn small{font-size:11px;margin-top:-10px}
+#fwdBtn{width:96px;height:96px}#revBtn{width:64px;height:64px}#revBtn b{font-size:20px}#revBtn small{font-size:9px;margin-top:-6px}
+#fwdBtn[aria-pressed=true]{background:#2a9d78;border-color:#d8fff0;box-shadow:0 0 0 6px #2a9d7840,0 0 22px #5ef2c070;animation:cruise 1.6s ease-in-out infinite}
+#revBtn.active{background:#c4782f;transform:scale(.94)}
+@keyframes cruise{50%{box-shadow:0 0 0 10px #2a9d7820,0 0 30px #5ef2c050}}
 </style>
 </head>
 <body>
@@ -76,7 +83,12 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
         </svg>
       </div>
     </div>
-    <div class="right-controls">
+    <div class="drive-buttons">
+      <button id="fwdBtn" class="drive-btn" aria-pressed="false" aria-label="قدّام: اضغط مرة للمشي المستمر ومرة للوقوف"><b>▲</b><small>قدّام</small></button>
+      <button id="revBtn" class="drive-btn" aria-label="رجوع: اضغط باستمرار"><b>▼</b><small>رجوع</small></button>
+    </div>
+    <!-- The game's lever/brake stay in the DOM for InputController but are hidden in AR. -->
+    <div class="right-controls" hidden>
       <button id="precision" aria-pressed="false" hidden>قيادة دقيقة</button>
       <div class="pedals">
         <button id="brake" class="pedal brake" aria-pressed="false" aria-label="الفرامل" hidden><span class="pedal-tread" aria-hidden="true"></span><b>فرامل</b></button>
@@ -213,7 +225,12 @@ async function setupScene(){
   $('arIntro').hidden=true;setStatus('وجّه الجوال للأرض وحرّكه ببطء');
 }
 
-function resetCar(){input?.reset();car.reset();accumulator=0;steerSmooth=0;visual.sync(car);}
+// Forward latch and held reverse replace the lever's throttle in AR.
+let cruise=false,reversing=false;
+function setCruise(on){cruise=on;$('fwdBtn').setAttribute('aria-pressed',String(on));}
+function driveInput(raw){return {...raw,throttle:reversing?-1:cruise?1:0,brake:false};}
+function stopDrive(){setCruise(false);reversing=false;$('revBtn').classList.remove('active');}
+function resetCar(){input?.reset();stopDrive();car.reset();accumulator=0;steerSmooth=0;visual.sync(car);}
 
 function place(){
   if(!reticle.visible||$('placeBtn').disabled){notify('وجّه الكاميرا للأرض أولًا');return;}
@@ -250,7 +267,7 @@ function tick(now){
   const dt=Math.min(.08,Math.max(0,(now-lastTick)/1000));lastTick=now;
   if(!placed){updatePreview(now);}
   else if(trackingReady(now)&&!document.hidden){
-    car.input=smoothInput(input.read(),dt);
+    car.input=smoothInput(driveInput(input.read()),dt);
     const steps=fixedSteps(accumulator,dt);accumulator=steps.accumulator;
     for(let i=0;i<steps.count;i++){car.beforeStep(CONFIG.step);world.step(CONFIG.step);car.afterStep(CONFIG.step);}
     const p=car.body.position,up=new THREE.Vector3(0,1,0).applyQuaternion(visual.root.quaternion);
@@ -303,7 +320,14 @@ $('reset').addEventListener('click',()=>{showMenu(false);resetCar();notify('رج
 $('sizeDown').addEventListener('click',()=>{sizeIndex=Math.max(0,sizeIndex-1);showSize();});
 $('sizeUp').addEventListener('click',()=>{sizeIndex=Math.min(SIZES.length-1,sizeIndex+1);showSize();});
 $('exitAr').addEventListener('click',()=>{try{XR8.stop();}catch{}location.href='../';});
-document.addEventListener('visibilitychange',()=>{trackingNormalSince=null;lastTick=performance.now();input?.reset();});
+document.addEventListener('visibilitychange',()=>{trackingNormalSince=null;lastTick=performance.now();input?.reset();stopDrive();});
+$('fwdBtn').addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;setCruise(!cruise);if(cruise){reversing=false;$('revBtn').classList.remove('active');}});
+{
+  const rev=$('revBtn'),release=e=>{if(rev.hasPointerCapture?.(e.pointerId))rev.releasePointerCapture(e.pointerId);reversing=false;rev.classList.remove('active');};
+  rev.addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;rev.setPointerCapture(e.pointerId);reversing=true;setCruise(false);rev.classList.add('active');});
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>rev.addEventListener(ev,release));
+}
+window.addEventListener('blur',stopDrive);
 $('driveControls').hidden=true;
 if(window.XR8)initXR();else window.addEventListener('xrloaded',initXR,{once:true});
 setTimeout(()=>{if(!xrReady&&!failed)$('loadState').textContent='محرك AR يتأخر. تحقق من الاتصال ثم أعد تحميل الصفحة.';},12000);
