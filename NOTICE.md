@@ -1,6 +1,6 @@
 # Sources and scope
 
-Jouri (formerly Motri) is an independent prototype, not a Hajwala mode and not an AR-Aboden dependency.
+Jood (formerly Motri) is an independent prototype, not a Hajwala mode and not an AR-Aboden dependency.
 
 ## RC vehicle reference
 

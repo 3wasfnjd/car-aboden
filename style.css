@@ -25,7 +25,7 @@ h1{font-size:clamp(60px,13vw,85px);line-height:1.2;margin:22px 0 12px;letter-spa
 @media(max-height:500px){.steering-wrap{width:132px;bottom:max(22px,env(safe-area-inset-bottom))}.steering-wrap small{display:none}.right-controls{bottom:max(22px,env(safe-area-inset-bottom));gap:8px}.pedal.brake{height:76px}.throttle-lever{height:132px}.speedbox{bottom:58px}.mission{max-width:42%}.bottom-tools{gap:6px}.bottom-tools span{font-size:8px}}
 #flowersBtn[aria-pressed=false]{opacity:.55}
 
-/* ---- Jouri teaser home: pink, rounded, with falling petals ---- */
+/* ---- Jood teaser home: pink, rounded, with falling petals ---- */
 .intro{--p50:#fff5f9;--p100:#ffe3ee;--p300:#ff9fc6;--p500:#f25c9c;--p600:#d93d82;--p700:#a8245f;--cute:'Baloo Bhaijaan 2',Tahoma,Arial,sans-serif;
   background:radial-gradient(120% 90% at 85% 0%,#ffd6e8f0,#fff0f6d9 55%,#ffe3eec0)}
 .intro-card{position:relative;z-index:1;background:#fffafcf5;border:3px solid #fff;border-radius:30px;box-shadow:0 24px 70px #a8245f33}

@@ -43,7 +43,7 @@ export async function boot() {
     const decor=addCuteDecor(visual,flowers.bed);flowers.setCanopy(decor.canopy);modelStatus.decor={canopy:!!decor.canopy,sign:!!decor.sign};}catch(e){console.warn(e);}
   function start(){if(dead)return;running=true;paused=false;everStarted=true;input.setEnabled(true);last=performance.now();accumulator=0;$('intro').hidden=true;$('hud').hidden=false;}
   $('start').disabled=false;$('start').textContent='يلّا ننطلق 🌸';
-  $('loadState').textContent=modelStatus.loaded?'جوري جاهزة • الورد بالحوض 🌹':modelStatus.error?'تعذر تحميل GMC؛ السيارة المؤقتة متاحة: '+modelStatus.error:'جاهزة للتجربة • بدون كاميرا';
+  $('loadState').textContent=modelStatus.loaded?'جود جاهزة • الورد بالحوض 🌹':modelStatus.error?'تعذر تحميل GMC؛ السيارة المؤقتة متاحة: '+modelStatus.error:'جاهزة للتجربة • بدون كاميرا';
   $('speedLimit').max='20';$('speedLimit').value=String(CONFIG.maxSpeed);$('speedValue').textContent=CONFIG.maxSpeed.toFixed(1);
   $('start').addEventListener('click',start);$('pause').addEventListener('click',showMenu);$('reset').addEventListener('click',resetCar);
   $('precision').addEventListener('click',()=>{input.precision=!input.precision;$('precision').setAttribute('aria-pressed',String(input.precision));$('precision').textContent=input.precision?'قيادة دقيقة: مفعّلة':'قيادة دقيقة';notify(input.precision?'سرعة منخفضة للتحكم قرب العقبات':'القيادة العادية');});

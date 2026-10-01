@@ -19,7 +19,7 @@ function heart(g,x,y,r,color) {
 }
 function signTexture(text) {
   const c=document.createElement('canvas');c.width=512;c.height=192;const g=c.getContext('2d');
-  const r=86;g.fillStyle='#ffffff';g.beginPath();g.roundRect(8,8,496,176,r);g.fill();
+  const r=86;g.fillStyle='#fff8f0';g.beginPath();g.roundRect(8,8,496,176,r);g.fill();
   g.lineWidth=12;g.strokeStyle='#ff9fc6';g.stroke();
   g.setLineDash([4,14]);g.lineCap='round';g.lineWidth=6;g.strokeStyle='#ffd1e3';g.beginPath();g.roundRect(30,30,452,132,66);g.stroke();g.setLineDash([]);
   g.fillStyle=ROSE;g.font='800 92px "Baloo Bhaijaan 2", Tahoma, Arial, sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(text,256,104);
@@ -34,7 +34,7 @@ function roundedRect(w,h,r) {
 // ShapeGeometry UVs are in shape units; map them to 0..1 for the texture.
 function normalizeUV(g,w,h){const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)/w+.5,uv.getY(i)/h+.5);return g;}
 
-export function addCuteDecor(visual,bed,{signText='جوري'}={}) {
+export function addCuteDecor(visual,bed,{signText='جود'}={}) {
   const group=new THREE.Group();group.name='CuteDecor';
   const mats={
     canopy:new THREE.MeshStandardMaterial({map:stripeTexture(),roughness:.6,side:THREE.DoubleSide}),

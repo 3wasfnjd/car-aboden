@@ -3,7 +3,7 @@
   "version":"0.2.0",
   "private":true,
   "type":"module",
-  "description":"جوري — mobile rose-car adventure (formerly Motri)",
+  "description":"جود — mobile rose-car adventure (formerly Motri)",
   "scripts":{
     "start":"node scripts/serve.mjs",
     "build":"node scripts/build.mjs",

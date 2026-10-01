@@ -32,7 +32,7 @@ export class TestWorld {
     this.label('01  منحدر',[8,.022,-5.5],4.5);
     this.label('02  ادفع الصندوق',[-8,.023,-1.5],5.3);
     this.label('03  ممر ضيّق',[0,.024,2.8],4.8);
-    this.label('JOURI · TEST LAB',[0,.023,-18.5],7.8);
+    this.label('JOOD · TEST LAB',[0,.023,-18.5],7.8);
     const hemi=new THREE.HemisphereLight(0xeaf5f2,0x928366,2.0);scene.add(hemi);
     this.sun=new THREE.DirectionalLight(0xfff2d9,2.6);this.sun.position.set(-12,20,-9);this.sun.castShadow=true;
     this.sun.shadow.mapSize.set(1024,1024);Object.assign(this.sun.shadow.camera,{left:-26,right:26,top:26,bottom:-26,near:.1,far:65});

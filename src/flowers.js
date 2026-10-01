@@ -62,10 +62,12 @@ function greenery(height,leaves) {
 const STEM=.52,HEAD=.62;
 const KINDS=[
   // Roses dominate; colours are per instance.
-  {weight:.6,head:()=>roseHead(),headY:STEM,stem:()=>greenery(STEM,2),colors:[0xc8102e,0xa0001c,0xe0245e,0xff6f9c,0xfff1f4,0xd81b60]},
+  {weight:.5,head:()=>roseHead(),headY:STEM,stem:()=>greenery(STEM,2),colors:[0xffa6c4,0xff7eaa,0xffc9da,0xfff1f4,0xe0245e,0xf5587f]},
   {weight:.2,head:()=>tulipHead(),headY:STEM*.95,stem:()=>greenery(STEM*.95,1),colors:[0xffd23f,0xff7aa2,0x9b5de5,0xff8c42,0xe63946]},
-  {weight:.2,head:()=>daisyHead(),headY:STEM*.9,stem:()=>greenery(STEM*.9,1),colors:[0xffffff,0xffe3ef,0xe4d7ff],
+  {weight:.18,head:()=>daisyHead(),headY:STEM*.9,stem:()=>greenery(STEM*.9,1),colors:[0xffffff,0xffe3ef,0xfff6e0],
     center:()=>new THREE.SphereGeometry(.055,10,6).scale(1,.45,1)},
+  {weight:.12,head:()=>daisyHead().scale(1.25,1,1.25),headY:STEM*1.02,stem:()=>greenery(STEM*1.02,2),colors:[0xffc21a,0xffd23f,0xffb300],
+    center:()=>new THREE.SphereGeometry(.07,12,6).scale(1,.4,1),centerColor:0x6b3f1f},
 ];
 const pickKind=()=>{let r=Math.random();for(let i=0;i<KINDS.length;i++){r-=KINDS[i].weight;if(r<=0)return i;}return 0;};
 
@@ -120,7 +122,7 @@ class BedBouquet {
         this.group.add(mesh);return mesh;
       };
       add(head,petal,kind.colors);add(kind.stem(),green);
-      if(kind.center)add(kind.center().scale(HEAD,HEAD,HEAD).translate(0,kind.headY+.012,0),yellow);
+      if(kind.center)add(kind.center().scale(HEAD,HEAD,HEAD).translate(0,kind.headY+.012,0),kind.centerColor?new THREE.MeshStandardMaterial({color:kind.centerColor,roughness:.8}):yellow);
     });
   }
   dispose(){this.group.removeFromParent();this.group.traverse(o=>{if(o.isInstancedMesh){o.geometry.dispose();o.dispose();}});this.materials.forEach(m=>m.dispose());}
