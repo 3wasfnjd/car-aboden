@@ -12,6 +12,10 @@ Messages (JSON):
 
 `ALLOWED_ORIGINS` in `wrangler.jsonc` limits which sites may connect (GitHub Pages and the local dev server).
 
+## Join notifications (owner only)
+
+If the `NTFY_TOPIC` repository secret is set, the deploy workflow stores it as a Worker secret and the relay posts a push to that [ntfy](https://ntfy.sh) topic when someone joins (name, room, player count; at most once per name per 10 minutes). Subscribe to the same topic in the ntfy app. Without the secret nothing is sent.
+
 ## Deploy
 
 Run the **Deploy Jood multiplayer** workflow in GitHub Actions (it uses the same

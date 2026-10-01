@@ -5,6 +5,8 @@ import { DurableObject } from "cloudflare:workers";
 export interface Env {
   ROOMS: DurableObjectNamespace<Room>;
   ALLOWED_ORIGINS?: string;
+  // Optional ntfy.sh topic (Worker secret): the owner gets a push when someone joins.
+  NTFY_TOPIC?: string;
 }
 
 interface Player {
@@ -40,6 +42,30 @@ function readState(m: Record<string, unknown>): CarState | null {
 }
 
 export class Room extends DurableObject<Env> {
+  // Last join notification per name, so reconnects don't spam the owner.
+  private notified = new Map<string, number>();
+
+  private notifyJoin(room: string, name: string, players: number) {
+    const topic = this.env.NTFY_TOPIC;
+    if (!topic) return;
+    const now = Date.now();
+    if (now - (this.notified.get(name) ?? 0) < 10 * 60 * 1000) return;
+    this.notified.set(name, now);
+    // JSON publish keeps Arabic text intact (headers must be ASCII).
+    this.ctx.waitUntil(
+      fetch("https://ntfy.sh/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          title: "جود 🌸",
+          message: `${name} دخل اللعبة (${room}) · ${players} ${players === 1 ? "لاعب" : "لاعبين"} الحين`,
+          tags: ["cherry_blossom"],
+        }),
+      }).catch(() => {}),
+    );
+  }
+
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const sockets = this.ctx.getWebSockets();
@@ -60,6 +86,7 @@ export class Room extends DurableObject<Env> {
     const peers = sockets.map((w) => w.deserializeAttachment() as Player).filter(Boolean);
     server.send(JSON.stringify({ t: "welcome", id: player.id, slot, name: player.name, peers }));
     this.broadcast({ t: "join", id: player.id, name: player.name, car: player.car, slot }, server);
+    this.notifyJoin(url.pathname.split("/").pop() || "", player.name, sockets.length + 1);
     return new Response(null, { status: 101, webSocket: client });
   }
 
