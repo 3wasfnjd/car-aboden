@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#203831">
+<meta name="description" content="موتري AR: اعرض السيارة وحدها في مكانك الحقيقي عبر كاميرا الجوال.">
+<title>موتري · السيارة في الواقع المعزز</title>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
+<style>
+:root{--ink:#203831;--muted:#6a7b72;--cream:#f6f4e9;--orange:#f5b36c;font-family:Tahoma,Arial,sans-serif;color:var(--ink);color-scheme:light}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#e2e4d7}
+button,a{font:inherit}[hidden]{display:none!important}
+model-viewer{position:fixed;inset:0;width:100%;height:100%;background:transparent;--poster-color:transparent;--progress-bar-color:var(--orange)}
+.top{position:fixed;z-index:2;top:max(14px,env(safe-area-inset-top));left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right));display:flex;align-items:center;justify-content:space-between;gap:10px;pointer-events:none}
+.brand{font-size:25px;font-weight:bold;line-height:1.1}.brand span{color:#cb8b43}.brand small{display:block;font-size:9px;margin-top:7px;color:#5b7065;font-weight:normal}
+.top a{pointer-events:auto;text-decoration:none;color:var(--ink);border:1px solid #ffffffae;background:#f6f5eade;border-radius:12px;height:44px;display:flex;align-items:center;padding:0 13px;font-size:12px}
+.panel{position:fixed;z-index:2;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom));width:min(420px,calc(100% - 32px));background:#f8f8effa;border-radius:20px;padding:16px;box-shadow:0 16px 50px #20383126;text-align:center}
+#arButton{background:var(--ink);color:var(--cream);border:0;width:100%;padding:15px;border-radius:13px;font-weight:bold;font-size:16px;min-height:52px;cursor:pointer}
+#arButton:disabled{opacity:.55;cursor:default}
+#status{font-size:11px;line-height:1.8;color:var(--muted);margin:10px 0 0;min-height:20px}
+@media(max-height:500px){.panel{left:auto;right:max(16px,env(safe-area-inset-right));transform:none;width:300px;padding:12px}#arButton{min-height:44px;padding:11px;font-size:14px}#status{font-size:10px;line-height:1.6;margin-top:6px}}
+</style>
+</head>
+<body>
+<model-viewer id="car" alt="سيارة موتري" ar ar-modes="webxr scene-viewer quick-look" ar-placement="floor" ar-scale="auto" camera-orbit="-35deg 72deg auto"
+  camera-controls touch-action="pan-y" shadow-intensity="0" environment-image="neutral" interaction-prompt="none" loading="eager">
+  <button slot="ar-button" hidden></button>
+</model-viewer>
+<header class="top"><div class="brand">موتري<span>.</span><small>السيارة في الواقع المعزز</small></div><a href="../">القيادة ←</a></header>
+<section class="panel">
+  <button id="arButton" disabled>تحميل السيارة…</button>
+  <p id="status" role="status">السيارة وحدها، بلا أرضية أو ساحة اختبار.</p>
+</section>
+<script type="module">
+// AR shows only the car selected in models/vehicle.json. The GLB has no
+// floor/shadow plane, and the viewer draws no ground shadow (shadow-intensity 0).
+const viewer=document.getElementById('car'),button=document.getElementById('arButton'),status=document.getElementById('status');
+const say=text=>{status.textContent=text;};
+try{
+  const response=await fetch('../models/vehicle.json',{cache:'no-cache'});
+  if(!response.ok)throw new Error('ملف إعداد الموديل غير متاح');
+  const cfg=await response.json();
+  if(!cfg.enabled||!cfg.model)throw new Error('لا يوجد موديل سيارة مفعّل');
+  await customElements.whenDefined('model-viewer');
+  viewer.addEventListener('load',()=>{
+    if(viewer.canActivateAR){button.disabled=false;button.textContent='اعرض السيارة في مكانك';say('وجّه الكاميرا للأرض وحرّك الجوال قليلًا. اسحب لتحريك السيارة وقرّب بإصبعين لتغيير حجمها.');}
+    else{button.textContent='الواقع المعزز للجوال فقط';say('افتح هذا الرابط من جوال يدعم AR: أندرويد (Chrome) أو آيفون (Safari).');}
+  },{once:true});
+  viewer.addEventListener('error',()=>{button.textContent='تعذر تحميل السيارة';say('تحقق من الاتصال وأعد فتح الصفحة.');});
+  viewer.addEventListener('ar-status',e=>{if(e.detail.status==='failed')say('تعذر تشغيل AR على هذا الجهاز أو المتصفح.');});
+  viewer.src=new URL('../models/'+cfg.model,location.href).href;
+  button.addEventListener('click',()=>viewer.activateAR());
+}catch(e){console.error(e);button.textContent='تعذر التجهيز';say(e.message||String(e));}
+</script>
+</body>
+</html>
