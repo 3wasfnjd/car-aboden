@@ -142,6 +142,7 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
     <button id="move">📍 نقل السيارة</button>
     <button id="flowersBtn" aria-pressed="true">🌸 الورود والبلورات</button>
     <button id="mpBtn">👯 اللعب الجماعي</button>
+    <button id="musicBtn" aria-pressed="true">🎵 الموسيقى</button>
     <div class="menu-size" aria-label="حجم السيارة"><button id="sizeDown2" aria-label="تصغير السيارة">−</button><output id="sizeValue2">1 م</output><button id="sizeUp2" aria-label="تكبير السيارة">+</button></div>
   </div>
   <div id="mpBadge" hidden>👥 أونلاين · <span id="mpBadgeCount">1</span></div>
@@ -220,6 +221,7 @@ import { InputController } from '../src/input.js';
 import { loadVehicleModel } from '../src/models.js';
 import { VEHICLES, vehicleChoice, mountVehiclePicker } from '../src/choice.js';
 import { Autopilot } from '../src/autopilot.js';
+import { RomanticMusic } from '../src/music.js';
 import { RoomClient, PUBLIC_ROOMS, cleanRoomCode, multiplayerServer, carState } from '../src/multiplayer.js';
 import { RemoteCars, PLAYER_COLORS } from '../src/remote-cars.js';
 import { FlowerEffects } from '../src/flowers.js';
@@ -475,7 +477,12 @@ function initXR(){
   }catch(e){console.error(e);fail('لم يكتمل تحميل محرك AR.');}
 }
 
+// Romantic background music: starts with the camera tap (a user gesture).
+const music=new RomanticMusic();
+const paintMusic=()=>{$('musicBtn').setAttribute('aria-pressed',String(music.enabled));$('musicBtn').textContent=music.enabled?'🎵 الموسيقى: شغّالة':'🎵 الموسيقى: موقفة';};paintMusic();
+$('musicBtn').addEventListener('click',()=>{music.toggle();paintMusic();});
 $('startBtn').addEventListener('click',()=>{
+  if(music.enabled)music.start();
   if(failed){location.reload();return;}
   if(!xrReady||xrStarted)return;
   xrStarted=true;$('startBtn').disabled=true;$('startBtn').textContent='تحميل السيارة…';

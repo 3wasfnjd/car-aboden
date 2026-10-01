@@ -9,6 +9,7 @@ import { FlowerEffects } from './flowers.js';
 import { applyRosePaint } from './paint.js';
 import { addCuteDecor, addVanLabels } from './decor.js';
 import { VEHICLES, vehicleChoice, mountVehiclePicker } from './choice.js';
+import { RomanticMusic } from './music.js';
 export async function boot() {
   const $=id=>document.getElementById(id),canvas=$('view');
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
@@ -51,6 +52,11 @@ export async function boot() {
   $('start').disabled=false;$('start').textContent='يلّا ننطلق 🌸';
   $('loadState').textContent=modelStatus.loaded?(vehicle==='van'?'شاحنة الورد جاهزة 🌷':'جود جاهزة • الورد بالحوض 🌹'):modelStatus.error?'تعذر تحميل GMC؛ السيارة المؤقتة متاحة: '+modelStatus.error:'جاهزة للتجربة • بدون كاميرا';
   $('speedLimit').max='20';$('speedLimit').value=String(CONFIG.maxSpeed);$('speedValue').textContent=CONFIG.maxSpeed.toFixed(1);
+  // Romantic background music starts with the first tap on start.
+  const music=new RomanticMusic();
+  const paintMusic=()=>{$('musicBtn').setAttribute('aria-pressed',String(music.enabled));$('musicBtn').textContent=music.enabled?'🎵 الموسيقى: شغّالة':'🎵 الموسيقى: موقفة';};paintMusic();
+  $('musicBtn').addEventListener('click',()=>{music.toggle();paintMusic();});
+  $('start').addEventListener('click',()=>{if(music.enabled)music.start();});
   $('start').addEventListener('click',start);$('pause').addEventListener('click',showMenu);$('reset').addEventListener('click',resetCar);
   $('precision').addEventListener('click',()=>{input.precision=!input.precision;$('precision').setAttribute('aria-pressed',String(input.precision));$('precision').textContent=input.precision?'قيادة دقيقة: مفعّلة':'قيادة دقيقة';notify(input.precision?'سرعة منخفضة للتحكم قرب العقبات':'القيادة العادية');});
   $('camera').addEventListener('click',()=>{camTargetYaw+=Math.PI/2;});
