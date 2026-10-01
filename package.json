@@ -7,7 +7,7 @@
   "scripts":{
     "start":"node scripts/serve.mjs",
     "build":"node scripts/build.mjs",
-    "test":"node --test tests/core.test.mjs",
+    "test":"node --test tests/core.test.mjs tests/multiplayer.test.mjs",
     "test:physics":"node --test tests/physics.test.mjs tests/model.test.mjs tests/red-model.test.mjs tests/flower-truck.test.mjs tests/autopilot.test.mjs",
     "check":"node scripts/check.mjs"
   },

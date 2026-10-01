@@ -67,6 +67,18 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
 #autoBtn.candy[aria-pressed=true]{background:radial-gradient(90% 55% at 50% 8%,#ffffff99 0 38%,#fff0 40%),linear-gradient(180deg,#c9a7ff,#9b6bf2);box-shadow:0 5px 0 #7445c9,0 0 0 6px #b28cff44}
 #autoBtn.candy[aria-pressed=true] svg{animation:spin 2.4s linear infinite}
 @media(max-height:500px){#autoBtn.candy{bottom:calc(max(14px,env(safe-area-inset-bottom)) + 130px)}}
+/* Multiplayer room panel and badge. */
+#mpBadge{position:absolute;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);pointer-events:none;background:#fff5f9f0;border:2px solid #fff;border-radius:999px;padding:6px 14px;font-family:var(--cute);font-weight:800;font-size:14px;color:var(--p700);box-shadow:0 6px 16px #a8245f30}
+#mpPanel{position:absolute;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);width:min(340px,calc(100% - 32px));max-height:calc(100% - 40px);overflow:auto;pointer-events:auto;background:#fff5f9f7;border:3px solid #fff;border-radius:26px;padding:16px;box-shadow:0 20px 50px #a8245f45;font-family:var(--cute);color:var(--p700)}
+#mpPanel header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:18px}
+#mpPanel label{display:block;font-weight:800;font-size:13px;margin:4px 0}
+#mpPanel input{width:100%;font:inherit;font-size:16px;padding:10px 14px;border-radius:14px;border:2px solid #ffc6dc;background:#fff;color:var(--p700);text-align:center}
+#mpPanel .candy{width:100%;min-height:50px;border-radius:999px;font-size:17px;margin:10px 0}
+#mpPanel .mp-join{display:flex;gap:8px}#mpPanel .mp-join input{flex:1;letter-spacing:3px;text-transform:uppercase}
+#mpPanel .mp-join button,#mpLeave{font:inherit;font-weight:800;border:2px solid #fff;border-radius:14px;background:linear-gradient(180deg,#fff,var(--p100));color:var(--p700);padding:10px 16px;box-shadow:0 3px 0 var(--p200)}
+#mpLeave{width:100%}
+#mpPanel .mp-hint{font-size:12px;line-height:1.7;color:#b06a8a;margin:8px 0 0}
+#mpPanel .mp-code{text-align:center;font-size:16px;margin:4px 0}#mpPanel .mp-code b{font-size:30px;letter-spacing:4px;display:block}
 @keyframes cruise{50%{box-shadow:0 0 0 10px #2a9d7820,0 0 30px #5ef2c050}}
 
 /* ---- Candy theme: pink jelly buttons that match the rose car ---- */
@@ -129,8 +141,26 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
     <button id="reset">🔄 إعادة السيارة</button>
     <button id="move">📍 نقل السيارة</button>
     <button id="flowersBtn" aria-pressed="true">🌸 الورود والبلورات</button>
+    <button id="mpBtn">👯 العب مع أصحابك</button>
     <div class="menu-size" aria-label="حجم السيارة"><button id="sizeDown2" aria-label="تصغير السيارة">−</button><output id="sizeValue2">1 م</output><button id="sizeUp2" aria-label="تكبير السيارة">+</button></div>
   </div>
+  <div id="mpBadge" hidden>👥 <b id="mpBadgeCode"></b> · <span id="mpBadgeCount">1</span></div>
+  <section id="mpPanel" hidden aria-label="اللعب مع الأصحاب">
+    <header><b>👯 العب مع أصحابك</b><button id="mpClose" class="round pearl" aria-label="إغلاق">×</button></header>
+    <div id="mpLobby">
+      <label for="mpName">اسمك</label><input id="mpName" maxlength="16" autocomplete="nickname" placeholder="مثلًا: سارة">
+      <button id="mpCreate" class="candy">🎀 غرفة جديدة</button>
+      <div class="mp-join"><input id="mpCode" maxlength="8" inputmode="text" autocapitalize="characters" placeholder="رمز الغرفة"><button id="mpJoin">انضمام</button></div>
+      <p class="mp-hint">كل واحد يفتح الرابط بجواله ويدخل نفس الرمز. سيارات الكل تطلع على أرض كل جوال.</p>
+    </div>
+    <div id="mpRoom" hidden>
+      <p class="mp-code">الغرفة <b id="mpRoomCode"></b></p>
+      <p id="mpPlayers" class="mp-hint"></p>
+      <button id="mpShare" class="candy">📤 شارك الرابط</button>
+      <button id="mpLeave">خروج من الغرفة</button>
+    </div>
+    <p id="mpStatus" class="mp-hint" role="status"></p>
+  </section>
   <div id="arStatus" role="status"><span class="status-dot"></span><span id="statusText">تشغيل الكاميرا…</span></div>
   <section id="placement">
     <div class="size" aria-label="حجم السيارة"><button id="sizeDown" class="candy" aria-label="تصغير">−</button><output id="sizeValue">1 م</output><button id="sizeUp" class="candy" aria-label="تكبير">+</button></div>
@@ -197,6 +227,8 @@ import { InputController } from '../src/input.js';
 import { loadVehicleModel } from '../src/models.js';
 import { VEHICLES, vehicleChoice, mountVehiclePicker } from '../src/choice.js';
 import { Autopilot } from '../src/autopilot.js';
+import { RoomClient, newRoomCode, cleanRoomCode, multiplayerServer, carState } from '../src/multiplayer.js';
+import { RemoteCars, PLAYER_COLORS } from '../src/remote-cars.js';
 import { FlowerEffects } from '../src/flowers.js';
 import { applyRosePaint } from '../src/paint.js';
 import { addCuteDecor, addVanLabels } from '../src/decor.js';
@@ -307,8 +339,10 @@ async function setupScene(){
   try{if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});const l=addVanLabels(visual,visual.modelLabels);status.labels={sign:!!l?.sign,plate:!!l?.plate};}else{status.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual});
     const decor=addCuteDecor(visual,flowers.bed);flowers.setCanopy(decor.canopy);status.decor={canopy:!!decor.canopy,sign:!!decor.sign};}}catch(e){console.warn(e);}
   showSize();
-  window.__motriAr={car,visual,anchor,status,get flowers(){return flowers;},get placed(){return placed;}};
+  window.__motriAr={car,visual,anchor,status,get room(){return room;},get remote(){return remote;},get flowers(){return flowers;},get placed(){return placed;}};
+  remote=new RemoteCars({parent:anchor,world});
   sceneReady=true;lastTick=performance.now();
+  const linkRoom=cleanRoomCode(new URLSearchParams(location.search).get('room'));if(linkRoom.length>=4)joinRoom(linkRoom);
   $('arIntro').hidden=true;setStatus('وجّه الجوال للأرض وحرّكه ببطء');
 }
 
@@ -376,10 +410,10 @@ function place(){
   if(!reticle.visible||$('placeBtn').disabled){notify('وجّه الكاميرا للأرض أولًا');return;}
   placed=true;reticle.visible=false;resetCar();
   $('placement').hidden=true;$('driveControls').hidden=false;$('menuBtn').hidden=false;input.setEnabled(true);steerSmooth=0;
-  hideStatus();
+  hideStatus();mpView();
 }
 function move(){
-  placed=false;input.setEnabled(false);resetCar();flowers?.clearTrail();
+  placed=false;input.setEnabled(false);resetCar();flowers?.clearTrail();mpView();
   $('driveControls').hidden=true;$('menuBtn').hidden=true;showMenu(false);$('placement').hidden=false;stableSince=null;
   setStatus('وجّه الجوال للمكان الجديد');
 }
@@ -418,6 +452,8 @@ function tick(now){
   }else if(placed){accumulator=0;setStatus('التتبع ضعيف — وجّه الجوال للأرض ببطء');}
   visual.sync(car);
   if(placed)flowers?.update(dt,{speed:car.speed,maxSpeed:car.params.maxSpeed,velocity:car.body.velocity});
+  remote?.update(dt);
+  if(room?.connected&&placed&&(sendClock+=dt)>=1/12){sendClock=0;room.send(carState(car,flowers?.enabled!==false));}
   visual.root.getWorldPosition(tmp);
   sun.target.position.copy(tmp);sun.position.copy(tmp).add(new THREE.Vector3(.6,2,.4));
 }
@@ -475,6 +511,50 @@ for(const [id,side] of [['leftBtn','left'],['rightBtn','right']]){
 window.addEventListener('blur',stopDrive);
 $('autoBtn').addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;setAuto((autoMode+1)%AUTO_MODES.length);});
 $('driveControls').hidden=true;
+// ---- Multiplayer: rooms on the Cloudflare relay (tools/jood-multiplayer) ----
+// Each car's pose is relative to its player's stage, so everyone sees all cars
+// on their own floor. Players get spread-out start slots.
+let room=null,remote=null,sendClock=0;
+const SLOT_X=[0,6,-6,12];
+const readName=()=>{try{return localStorage.getItem('jood-name')||'';}catch{return '';}};
+$('mpName').value=readName();
+function playersText(){const n=1+(room?.peers.size||0);$('mpBadgeCount').textContent=n;
+  $('mpPlayers').textContent='اللاعبين: '+[readName()||'أنت',...[...(room?.peers.values()||[])].map(p=>p.name)].join('، ');}
+function mpView(){const inRoom=!!room;$('mpLobby').hidden=inRoom;$('mpRoom').hidden=!inRoom;$('mpBadge').hidden=!inRoom||!placed;if(inRoom){$('mpRoomCode').textContent=room.room;$('mpBadgeCode').textContent=room.room;playersText();}}
+async function joinRoom(code){
+  code=cleanRoomCode(code);if(code.length<4){notify('رمز الغرفة 4 حروف أو أرقام');return;}
+  const server=await multiplayerServer('../');
+  if(!server){$('mpStatus').textContent='اللعب الجماعي ما تفعّل بعد: سيرفر الغرف ما انتشر.';notify('سيرفر الغرف غير جاهز بعد');return;}
+  leaveRoom(true);
+  const name=($('mpName').value||'').trim().slice(0,16);try{localStorage.setItem('jood-name',name);}catch{}
+  room=new RoomClient({server,room:code,name,car:vehicleChoice(),on:{
+    welcome:m=>{$('mpStatus').textContent='متصل ✓';car.checkpoint=[SLOT_X[m.slot%SLOT_X.length],.72,0];if(!placed)car.reset();
+      for(const p of m.peers){remote.add(p);if(p.state)remote.state({id:p.id,...p.state});}playersText();},
+    join:p=>{remote.add(p);playersText();notify(`${p.name} دخلت الغرفة 🌸`);},
+    leave:p=>{remote.remove(p.id);playersText();},
+    state:m=>remote.state(m),
+    status:st=>{$('mpStatus').textContent=st==='open'?'متصل ✓':st==='retry'?'نعيد الاتصال…':st==='lost'?'انقطع الاتصال':'نتصل…';},
+  }});
+  room.connect();
+  const url=new URL(location.href);url.searchParams.set('room',code);history.replaceState(null,'',url);mpView();
+}
+function leaveRoom(silent){
+  if(!room)return;room.close();room=null;remote?.clear();car.checkpoint=[...SPAWN];
+  const url=new URL(location.href);url.searchParams.delete('room');history.replaceState(null,'',url);
+  if(!silent){$('mpStatus').textContent='';notify('طلعت من الغرفة');}mpView();
+}
+$('mpBtn').addEventListener('click',()=>{showMenu(false);$('mpPanel').hidden=false;mpView();});
+$('mpClose').addEventListener('click',()=>{$('mpPanel').hidden=true;});
+$('mpCreate').addEventListener('click',()=>joinRoom(newRoomCode()));
+$('mpJoin').addEventListener('click',()=>joinRoom($('mpCode').value));
+$('mpLeave').addEventListener('click',()=>leaveRoom(false));
+$('mpShare').addEventListener('click',async()=>{
+  if(!room)return;const url=new URL(location.href);url.searchParams.set('room',room.room);
+  const text=`تعال نسوق جود مع بعض 🌸 رمز الغرفة: ${room.room}`;
+  try{if(navigator.share){await navigator.share({title:'جود',text,url:url.href});return;}}catch{return;}
+  try{await navigator.clipboard.writeText(url.href);notify('نسخت الرابط ✓');}catch{notify(url.href);}
+});
+window.addEventListener('pagehide',()=>room?.close());
 mountVehiclePicker($('carPickAr'));
 if(window.XR8)initXR();else window.addEventListener('xrloaded',initXR,{once:true});
 setTimeout(()=>{if(!xrReady&&!failed)$('loadState').textContent='محرك AR يتأخر. تحقق من الاتصال ثم أعد تحميل الصفحة.';},12000);

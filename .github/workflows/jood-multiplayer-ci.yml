@@ -1,0 +1,30 @@
+name: Jood multiplayer checks
+
+on:
+  push:
+    paths:
+      - "tools/jood-multiplayer/**"
+      - ".github/workflows/jood-multiplayer-ci.yml"
+  pull_request:
+    paths:
+      - "tools/jood-multiplayer/**"
+      - ".github/workflows/jood-multiplayer-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        working-directory: tools/jood-multiplayer
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Typecheck
+        working-directory: tools/jood-multiplayer
+        run: npm run typecheck
