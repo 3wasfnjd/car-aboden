@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f25c9c">
+<meta name="description" content="جود: وردة على أربع عجلات. سُقها وخلّ وراك طريق ورد وبلورات تلمع، أو اطلقها على أرض بيتك بالواقع المعزز.">
+<title>جود · مختبر القيادة (مخفي)</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;800&display=swap">
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}
+</script>
+</head>
+<body>
+<canvas id="view" aria-label="ساحة قيادة جود"></canvas>
+<section id="intro" class="intro">
+  <div class="petal-rain" aria-hidden="true"><i style="--x:32%;--d:8.8s;--w:-1.7s;--s:1.04"></i><i style="--x:13%;--d:7.4s;--w:-3.6s;--s:1.34"></i><i style="--x:9%;--d:8.3s;--w:-2.8s;--s:0.89"></i><i style="--x:24%;--d:12.0s;--w:-4.4s;--s:1.36"></i><i style="--x:5%;--d:12.0s;--w:-1.2s;--s:1.26"></i><i style="--x:26%;--d:8.0s;--w:-4.3s;--s:1.31"></i><i style="--x:49%;--d:7.5s;--w:-2.4s;--s:1.17"></i><i style="--x:66%;--d:8.5s;--w:-4.5s;--s:0.90"></i><i style="--x:72%;--d:12.0s;--w:-6.0s;--s:0.90"></i><i style="--x:92%;--d:12.3s;--w:-0.9s;--s:1.06"></i><i style="--x:54%;--d:9.5s;--w:-4.3s;--s:1.02"></i><i style="--x:31%;--d:8.8s;--w:-1.1s;--s:0.73"></i><i style="--x:7%;--d:9.8s;--w:-0.0s;--s:1.06"></i><i style="--x:84%;--d:9.8s;--w:-3.9s;--s:1.40"></i></div>
+  <div class="intro-card">
+    <span class="eyebrow">JOOD ✿ ROSE RIDE <span>🤫 فيه سر</span></span>
+    <h1><span class="shine">جود</span><span class="brand-dot">.</span></h1>
+    <p class="tagline">وردة… على أربع عجلات.<br><strong>كل دعسة تخلّي وراك طريق ورد.</strong></p>
+    <p class="intro-text">حوضها مليان ورد، وبلوراتها تلمع في الهوا. سُقها هنا، أو اطلقها على أرض بيتك… وشوف وش يصير.</p>
+    <div class="intro-chips"><span>🌹 ورد يتطاير</span><span>✨ بلورات تلمع</span><span>📱 على أرضك</span></div>
+    <button id="start" class="start" disabled>تجهيز جود…</button>
+    <p id="loadState" class="load-state" role="status">نجهّز الورد في الحوض…</p>
+    <a class="ar-link" href="ar/">🌹 خلّها تمشي على أرضك <small>AR</small></a>
+    <div class="intro-footer"><span>قريبًا: مغامرة أكبر بكثير…</span><span>JOOD · 01</span></div>
+  </div>
+</section>
+<main id="hud" hidden>
+  <header class="topbar">
+    <div class="brand">جود<span>.</span><small>مختبر القيادة</small></div>
+    <nav class="nav"><button id="help" aria-label="الإعدادات والتعليمات">الضبط</button><button id="pause" aria-label="إيقاف مؤقت">Ⅱ</button></nav>
+  </header>
+  <div class="mission"><span class="status-dot"></span><span id="mission">ادفع الصندوق البرتقالي إلى المربع الأخضر</span></div>
+  <div class="speedbox"><b id="speed">0</b><span>%<small>السرعة</small></span><strong id="gear">N</strong></div>
+  <div class="drive-controls">
+    <div class="steering-wrap">
+      <div id="steering" role="slider" tabindex="0" aria-label="المقود: اسحب يمينًا أو يسارًا؛ أو استخدم الأسهم" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-orientation="horizontal">
+        <svg id="steeringWheel" viewBox="0 0 160 160" aria-hidden="true">
+          <circle class="wheel-halo" cx="80" cy="80" r="74"/>
+          <circle class="wheel-rim" cx="80" cy="80" r="59"/>
+          <path class="wheel-spoke" d="M28 63L66 76M132 63L94 76M80 139V94"/>
+          <circle class="wheel-hub" cx="80" cy="80" r="21"/>
+          <path class="wheel-notch" d="M80 16V28"/>
+          <circle class="wheel-bolt" cx="80" cy="80" r="5"/>
+        </svg>
+      </div>
+      <small>اسحب المقود يمينًا / يسارًا</small>
+    </div>
+    <div class="right-controls">
+      <button id="precision" aria-pressed="false">قيادة دقيقة</button>
+      <div class="pedals">
+        <button id="brake" class="pedal brake" aria-pressed="false" aria-label="الفرامل: اضغط باستمرار للتوقف"><span class="pedal-tread" aria-hidden="true"></span><b>فرامل</b></button>
+        <div id="accelerator" class="throttle-lever" role="slider" tabindex="0" aria-label="البنزين والقير: اسحب لأعلى للتقدم ولأسفل للرجوع" aria-orientation="vertical" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-valuetext="محايد" data-drive="N">
+          <span class="lever-label forward" aria-hidden="true">↑ قدّام</span>
+          <span class="lever-track" aria-hidden="true"></span>
+          <span id="throttleKnob" aria-hidden="true"><b id="throttleMode">N</b><i></i></span>
+          <span class="lever-label reverse" aria-hidden="true">رجوع ↓</span>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-tools"><button id="reset" aria-label="إعادة السيارة">↻ <span>إعادة السيارة</span></button><button id="camera" aria-label="تغيير زاوية الكاميرا">◈ <span>الكاميرا</span></button><button id="flowersBtn" aria-pressed="true" aria-label="نثر الورود أثناء القيادة">🌹 <span>الورود</span></button></div>
+  </div>
+</main>
+<aside id="settings" hidden>
+  <header><h2>تجربة القيادة</h2><button id="closeSettings" aria-label="إغلاق الإعدادات">×</button></header>
+  <p>المقود يسار الشاشة للتوجيه فقط. البنزين والقير في متحكم واحد يمينًا: المسه واسحب للأعلى للتقدم، أو للأسفل للرجوع. مقدار السحب يحدد السرعة؛ المنتصف ورفع الإصبع يقطعان الدعسة. عند طلب الاتجاه المعاكس أثناء الحركة تفرمل السيارة أولًا قبل تغيير اتجاهها. الفرامل مستقلة بجانبه ولها الأولوية. فعّل القيادة الدقيقة قرب العقبات.</p>
+  <p class="keyboard">الكمبيوتر: WASD أو الأسهم · Space فرامل · R إعادة · P قيادة دقيقة · Esc إيقاف.</p>
+  <label for="quality">جودة العرض</label><select id="quality"><option value="balanced">متوازنة</option><option value="low">خفيفة بدون ظلال</option></select>
+  <label for="speedLimit">حد السرعة التجريبي <output id="speedValue">10.0</output></label><input id="speedLimit" type="range" min="4" max="14" value="10" step=".5">
+  <p class="note">الأرقام بوحدات المحاكاة وليست سرعة سيارة لعبة حقيقية. الفيزياء تحتاج اختبارًا على الجهاز المستهدف.</p>
+  <div class="setting-actions"><button id="musicBtn" aria-pressed="true">🎵 الموسيقى</button><button id="savePoint">حفظ موضع البداية</button><button id="resetWorld">إعادة ساحة الاختبار</button></div>
+  <p id="telemetry" class="telemetry" dir="ltr">— FPS · —/4 contacts</p>
+</aside>
+<div id="toast" role="status"></div>
+<section id="fatal" hidden><div><h2>تعذّر تشغيل التجربة</h2><p id="fatalText">لم يكتمل تحميل المحرك.</p><p>افتح النسخة المنشورة عبر HTTPS أو الخادم المحلي. فتح ملفات المصدر من مدير الملفات لا يكفي.</p><button onclick="location.reload()">إعادة المحاولة</button></div></section>
+<script id="bootstrap" type="module">
+const timeout=setTimeout(()=>{document.getElementById('loadState').textContent='التحميل تأخر. تحقق من الاتصال بالإنترنت؛ هذه النسخة تستخدم CDN للمكتبات.';},18000);
+try {const {boot}=await import('./src/app.js');await boot();clearTimeout(timeout);}
+catch(error){clearTimeout(timeout);console.error(error);document.getElementById('fatal').hidden=false;document.getElementById('fatalText').textContent=error.message||String(error);}
+</script>
+</body>
+</html>

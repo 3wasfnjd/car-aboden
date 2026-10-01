@@ -25,7 +25,7 @@ try{
     page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('.glb'))modelRequests.push(request.url());});
     page.on('pageerror',e=>errors.push(e.message));
     page.on('console',m=>{if(m.type()==='error'&&/THREE|WebGL|Shader|TypeError|ReferenceError/.test(m.text()))errors.push(m.text());});
-    await page.goto('http://127.0.0.1:5173/?debug',{waitUntil:'networkidle',timeout:60000});
+    await page.goto('http://127.0.0.1:5173/lab.html?debug&car=gmc',{waitUntil:'networkidle',timeout:60000});
     await page.waitForFunction(()=>window.__motri&&!document.querySelector('#start').disabled,{},{timeout:30000});
     const model=await page.evaluate(()=>{
       const m=window.__motri,materials=[];

@@ -201,13 +201,12 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
   <div class="intro-card">
     <span class="eyebrow">JOOD / AR <span>آيفون وأندرويد</span></span>
     <h1>جود<span class="brand-dot">.</span></h1>
-    <p class="tagline">السيارة على أرضك.<br><strong>وأنت تسوقها.</strong></p>
-    <p class="intro-text">اسمح بالكاميرا، وجّه الجوال للأرض وحرّكه ببطء حتى تظهر السيارة، اختر حجمها ثم ثبّتها وسُقها بنفس تحكم اللعبة.</p>
-    <div id="carPickAr" class="car-pick" role="group" aria-label="اختر السيارة"><button data-car="gmc" aria-pressed="true">🚙 جود · الجمس</button><button data-car="van" aria-pressed="false">🚐 شاحنة الورد</button></div>
+    <p class="tagline">شاحنة الورد على أرضك.<br><strong>وأنت تسوقها.</strong></p>
+    <p class="intro-text">اسمح بالكاميرا، وجّه الجوال للأرض وحرّكه ببطء لين تطلع شاحنة الورد، اختر حجمها، ثبّتها، وسُقها بالأزرار.</p>
     <button id="startBtn" class="start candy" disabled>تجهيز محرك الواقع المعزز…</button>
     <p id="loadState" class="load-state" role="status"></p>
     <div id="arError"></div>
-    <a class="back" href="../">الرجوع إلى ساحة الاختبار</a>
+    <a class="back" href="../">الرجوع للصفحة الرئيسية</a>
   </div>
 </section>
 <div id="toast" role="status"></div>
@@ -219,7 +218,7 @@ import { MotriVehicle } from '../src/vehicle.js';
 import { CarVisual } from '../src/visuals.js';
 import { InputController } from '../src/input.js';
 import { loadVehicleModel } from '../src/models.js';
-import { VEHICLES, vehicleChoice, mountVehiclePicker } from '../src/choice.js';
+import { VEHICLES } from '../src/choice.js';
 import { Autopilot } from '../src/autopilot.js';
 import { RomanticMusic } from '../src/music.js';
 import { RoomClient, PUBLIC_ROOMS, cleanRoomCode, multiplayerServer, carState } from '../src/multiplayer.js';
@@ -326,7 +325,7 @@ async function setupScene(){
   input=new InputController(resetCar,()=>{});input.setEnabled(false);
   $('precision').addEventListener('click',()=>{input.precision=!input.precision;$('precision').setAttribute('aria-pressed',String(input.precision));$('precision').textContent=input.precision?'قيادة دقيقة: مفعّلة':'قيادة دقيقة';});
   let status={loaded:false};
-  try{status=await loadVehicleModel(visual,'../models/'+VEHICLES[vehicleChoice()].config,car);}catch(e){console.warn(e);notify('تعذر تحميل السيارة؛ تظهر السيارة المؤقتة');}
+  try{status=await loadVehicleModel(visual,'../models/'+VEHICLES.van.config,car);}catch(e){console.warn(e);notify('تعذر تحميل السيارة؛ تظهر السيارة المؤقتة');}
   visual.sync(car);
   const box=new THREE.Box3().setFromObject(visual.root);carLength=Math.max(1,box.max.z-box.min.z);
   // The GMC gets pink paint, the awning and a bed bouquet; the van already has
@@ -530,7 +529,7 @@ async function goOnline(){
   const server=await multiplayerServer('../');
   if(!server){$('mpStatus').textContent='اللعب الجماعي ما تفعّل بعد: سيرفر الغرف ما انتشر.';mpView();return;}
   const link=cleanRoomCode(new URLSearchParams(location.search).get('room'));
-  room=new RoomClient({server,rooms:link.length>=4?[link]:PUBLIC_ROOMS,name:readName(),car:vehicleChoice(),on:{
+  room=new RoomClient({server,rooms:link.length>=4?[link]:PUBLIC_ROOMS,name:readName(),car:'van',on:{
     welcome:m=>{$('mpStatus').textContent='متصل ✓ '+(m.peers.length?'':'— بانتظار أحد يدخل');car.checkpoint=[SLOT_X[m.slot%SLOT_X.length],.72,0];if(!placed)car.reset();
       for(const p of m.peers){remote.add(p);if(p.state)remote.state({id:p.id,...p.state});}mpView();},
     join:p=>{remote.add(p);mpView();notify(`${p.name} دخلت معك 🌸`);},
@@ -549,7 +548,6 @@ $('mpSaveName').addEventListener('click',()=>{
   if(room){goOffline();goOnline();}
 });
 window.addEventListener('pagehide',()=>room?.close());
-mountVehiclePicker($('carPickAr'));
 if(window.XR8)initXR();else window.addEventListener('xrloaded',initXR,{once:true});
 setTimeout(()=>{if(!xrReady&&!failed)$('loadState').textContent='محرك AR يتأخر. تحقق من الاتصال ثم أعد تحميل الصفحة.';},12000);
 </script>

@@ -8,7 +8,7 @@ import { loadVehicleModel } from './models.js';
 import { FlowerEffects } from './flowers.js';
 import { applyRosePaint } from './paint.js';
 import { addCuteDecor, addVanLabels } from './decor.js';
-import { VEHICLES, vehicleChoice, mountVehiclePicker } from './choice.js';
+import { VEHICLES, vehicleChoice } from './choice.js';
 import { RomanticMusic } from './music.js';
 export async function boot() {
   const $=id=>document.getElementById(id),canvas=$('view');
@@ -29,7 +29,8 @@ export async function boot() {
   function resetCar(){input.reset();car.reset();accumulator=0;cameraTarget.copy(car.body.position);notify('عادت السيارة إلى نقطة البداية');}
   function showMenu(){running=false;paused=true;input.setEnabled(false);$('intro').hidden=false;$('hud').hidden=true;$('settings').hidden=true;$('start').textContent='نكمل المشوار 🌸';}
   const input=new InputController(resetCar,()=>running?showMenu():start());input.setEnabled(false);
-  const vehicle=vehicleChoice();mountVehiclePicker($('carPick'));
+  // Hidden lab: the van by default, ?car=gmc for the GMC (used by the tests).
+  const vehicle=vehicleChoice();
   let modelStatus={loaded:false};
   // Finish model/rig installation before accepting driving input. Failed model
   // downloads remain visible as a warning, never a silent successful replacement.

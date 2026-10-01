@@ -2,7 +2,7 @@
 import {readFile,writeFile,mkdir,cp,rm} from 'node:fs/promises';
 const root=new URL('../',import.meta.url),dist=new URL('../dist/',import.meta.url);
 await rm(dist,{recursive:true,force:true});await mkdir(dist,{recursive:true});
-for(const name of ['index.html','style.css','src','models','ar','multiplayer.json','NOTICE.md','LICENSE'])await cp(new URL(name,root),new URL(name,dist),{recursive:true});
+for(const name of ['index.html','lab.html','style.css','assets','src','models','ar','multiplayer.json','NOTICE.md','LICENSE'])await cp(new URL(name,root),new URL(name,dist),{recursive:true});
 await writeFile(new URL('.nojekyll',dist),'');
 let combined="window.MOTRI_SINGLE_FILE=true;\nimport * as THREE from 'three';\nimport * as CANNON from 'cannon-es';\nimport { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';\nimport { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';\n";
 for(const name of ['core','vehicle','visuals','world','gmc','tripo','models','choice','autopilot','multiplayer','music','flowers','paint','decor','input','app']) {
@@ -12,7 +12,8 @@ for(const name of ['core','vehicle','visuals','world','gmc','tripo','models','ch
  combined+=`\nconst {${names.join(',')}} = (()=>{\n${body}\nreturn {${names.join(',')}};\n})();\n`;
 }
 combined+=`try { await boot(); } catch(e) {console.error(e);document.getElementById('fatal').hidden=false;document.getElementById('fatalText').textContent=e.message;}\n`;
-let html=await readFile(new URL('index.html',root),'utf8');
+// The one-file build is the (hidden) driving lab.
+let html=await readFile(new URL('lab.html',root),'utf8');
 const css=await readFile(new URL('style.css',root),'utf8');
 html=html.replace('<link rel="stylesheet" href="style.css">',()=>'<style>'+css+'</style>');
 html=html.replace(/<script id="bootstrap" type="module">[\s\S]*?<\/script>/,()=>'<script type="module">\n'+combined.replaceAll('</script','<\\/script')+'\n</script>');

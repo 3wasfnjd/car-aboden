@@ -31,7 +31,7 @@ export class RemoteCars {
     const entry={peer,ready:false,target:null,spin:0,age:0};this.cars.set(peer.id,entry);
     // A throwaway physics rig lets the shared loaders size the model exactly as for the local car.
     const rig=new MotriVehicle(new CANNON.World()),visual=new CarVisual(this.parent);visual.root.visible=false;
-    try{await loadVehicleModel(visual,this.modelBase+(VEHICLES[peer.car]||VEHICLES.gmc).config,rig);}catch(e){console.warn(e);}
+    try{await loadVehicleModel(visual,this.modelBase+VEHICLES.van.config,rig);}catch(e){console.warn(e);}
     if(this.cars.get(peer.id)!==entry){visual.dispose();return;}
     visual.sync(rig);entry.wheelBase=visual.wheelMounts.map(m=>m.position.clone());
     let flowers=null;
