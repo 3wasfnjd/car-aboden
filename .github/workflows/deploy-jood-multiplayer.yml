@@ -39,6 +39,7 @@ jobs:
         run: |
           url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
           echo "Relay URL: $url"
-          curl -fsS "$url/health"
+          # A new workers.dev route can take a little while to answer.
+          for i in $(seq 1 12); do curl -fsS "$url/health" && break; [ "$i" = 12 ] && exit 1; sleep 10; done
           echo "### Jood multiplayer relay" >> "$GITHUB_STEP_SUMMARY"
           echo "Put this in multiplayer.json: \`{\"server\": \"$url\"}\`" >> "$GITHUB_STEP_SUMMARY"
