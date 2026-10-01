@@ -1,48 +1,73 @@
-// Flowers in the truck bed and a trail of flowers dropped while driving.
-// Assets: Kenney Nature Kit flowers (CC0), see models/flowers/CREDITS.md.
-// Everything is in simulation units; the trail lives beside the car root, so
-// the AR anchor's toy scale applies to both.
+// Procedural roses and flowers fixed in the truck bed, plus rose petals that
+// scatter while driving. No model files: every shape is built in code.
+// All sizes are simulation units; the trail lives beside the car root, so the
+// AR anchor's toy scale applies to it too.
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const FILES=['flower_redA.glb','flower_purpleA.glb','flower_yellowA.glb'];
-// Red stands in for roses, so it appears twice as often.
-const pickKind=()=>{const r=Math.random();return r<.5?0:r<.75?1:2;};
+const rand=(a,b)=>a+Math.random()*(b-a);
+const pick=list=>list[(Math.random()*list.length)|0];
 
-export async function loadFlowerKinds(base='models/flowers/') {
-  const loader=new GLTFLoader();
-  return Promise.all(FILES.map(async file=>{
-    const {scene}=await loader.loadAsync(new URL(base+file,location.href).href);
-    scene.updateMatrixWorld(true);const parts=[];
-    // The files set metallicFactor 1 (fully metallic), which renders
-    // near-black without an environment map. Use matte petals.
-    scene.traverse(o=>{if(o.isMesh){const material=o.material.clone();material.metalness=0;material.roughness=.75;parts.push({geometry:o.geometry.clone().applyMatrix4(o.matrixWorld),material});}});
-    if(!parts.length)throw new Error('Flower model is empty: '+file);
-    return parts;
-  }));
+// Concatenate geometries (position + normal only) without addon dependencies.
+function merge(list) {
+  const parts=list.map(g=>{const n=g.index?g.toNonIndexed():g;if(!n.attributes.normal)n.computeVertexNormals();return n;});
+  const count=parts.reduce((s,g)=>s+g.attributes.position.count,0);
+  const pos=new Float32Array(count*3),nor=new Float32Array(count*3);let o=0;
+  for(const g of parts){pos.set(g.attributes.position.array,o*3);nor.set(g.attributes.normal.array,o*3);o+=g.attributes.position.count;}
+  const out=new THREE.BufferGeometry();
+  out.setAttribute('position',new THREE.BufferAttribute(pos,3));out.setAttribute('normal',new THREE.BufferAttribute(nor,3));
+  out.computeBoundingSphere();return out;
 }
 
-// One InstancedMesh per kind and material; slots are reused oldest-first.
-class FlowerInstances {
-  constructor(parent,kinds,capacity) {
-    this.group=new THREE.Group();this.group.name='Flowers';parent.add(this.group);
-    this.capacity=capacity;this.next=kinds.map(()=>0);this.used=kinds.map(()=>0);
-    this.meshes=kinds.map(parts=>parts.map(({geometry,material})=>{
-      const mesh=new THREE.InstancedMesh(geometry,material,capacity);
-      mesh.count=0;mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=false;
-      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.group.add(mesh);return mesh;
-    }));
-  }
-  add(kind,matrix) {
-    const slot=this.next[kind];this.next[kind]=(slot+1)%this.capacity;
-    this.used[kind]=Math.min(this.capacity,this.used[kind]+1);this.set(kind,slot,matrix);return slot;
-  }
-  set(kind,slot,matrix) {
-    for(const mesh of this.meshes[kind]){mesh.setMatrixAt(slot,matrix);mesh.count=this.used[kind];mesh.instanceMatrix.needsUpdate=true;}
-  }
-  clear() {this.next.fill(0);this.used.fill(0);for(const list of this.meshes)for(const m of list)m.count=0;}
-  dispose() {this.group.removeFromParent();for(const list of this.meshes)for(const m of list)m.dispose();}
+// A cupped teardrop petal in XY (base at y=-.16, tip at y=.19), cup toward +Z.
+export function petalGeometry(width=1,length=1,cup=2.2) {
+  const s=new THREE.Shape();
+  s.moveTo(0,-.16);
+  s.bezierCurveTo(.13*width,-.12,.15*width,.07,.07*width,.15);
+  s.quadraticCurveTo(0,.19,-.07*width,.15);
+  s.bezierCurveTo(-.15*width,.07,-.13*width,-.12,0,-.16);
+  const g=new THREE.ShapeGeometry(s,6),p=g.attributes.position;
+  for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i);p.setZ(i,x*x*cup+Math.max(0,y)*y*.9);p.setY(i,y*length);}
+  g.computeVertexNormals();return g;
 }
+// Petal standing on its base around the flower centre, cup facing inward.
+function ringPetal(base,{angle,radius,tilt,scale,y=0}) {
+  return base.clone().translate(0,.16,0).rotateY(Math.PI).scale(scale,scale,scale)
+    .rotateX(tilt).translate(0,y,radius).rotateY(angle);
+}
+
+function roseHead() {
+  const base=petalGeometry(1,1,2.6),parts=[];
+  const rings=[[3,.42,.012,.12,.06],[5,.62,.04,.42,.03],[6,.82,.075,.8,.01],[8,1,.11,1.18,-.01]];
+  rings.forEach(([n,scale,radius,tilt,y],r)=>{for(let i=0;i<n;i++)parts.push(ringPetal(base,{angle:(i+r*.5)/n*Math.PI*2,radius,tilt,scale,y}));});
+  return merge(parts);
+}
+function tulipHead() {
+  const base=petalGeometry(1.25,1.35,1.8),parts=[];
+  for(let i=0;i<6;i++)parts.push(ringPetal(base,{angle:i/6*Math.PI*2+(i%2)*.3,radius:.05+(i%2)*.015,tilt:.12+(i%2)*.1,scale:.95}));
+  return merge(parts);
+}
+function daisyHead() {
+  const base=petalGeometry(.45,1.6,.4),parts=[];
+  for(let i=0;i<14;i++)parts.push(base.clone().translate(0,.16,0).rotateX(-Math.PI/2+.25).translate(0,0,.04).rotateY(i/14*Math.PI*2));
+  return merge(parts);
+}
+function greenery(height,leaves) {
+  const parts=[new THREE.CylinderGeometry(.02,.026,height,5).translate(0,height/2,0)];
+  const leaf=petalGeometry(.7,1.4,1.2);
+  for(let i=0;i<leaves;i++)parts.push(leaf.clone().translate(0,.16,0).rotateX(.9).rotateY(i*2.4+.5).translate(0,height*(.3+.2*i),0));
+  return merge(parts);
+}
+
+// Head scale and stem length keep the bouquet inside the bed, just above the rails.
+const STEM=.52,HEAD=.62;
+const KINDS=[
+  // Roses dominate; colours are per instance.
+  {weight:.6,head:()=>roseHead(),headY:STEM,stem:()=>greenery(STEM,2),colors:[0xc8102e,0xa0001c,0xe0245e,0xff6f9c,0xfff1f4,0xd81b60]},
+  {weight:.2,head:()=>tulipHead(),headY:STEM*.95,stem:()=>greenery(STEM*.95,1),colors:[0xffd23f,0xff7aa2,0x9b5de5,0xff8c42,0xe63946]},
+  {weight:.2,head:()=>daisyHead(),headY:STEM*.9,stem:()=>greenery(STEM*.9,1),colors:[0xffffff,0xffe3ef,0xe4d7ff],
+    center:()=>new THREE.SphereGeometry(.055,10,6).scale(1,.45,1)},
+];
+const pickKind=()=>{let r=Math.random();for(let i=0;i<KINDS.length;i++){r-=KINDS[i].weight;if(r<=0)return i;}return 0;};
 
 // Find the open bed floor by casting down onto the loaded body, behind the cab.
 function findBed(visual) {
@@ -62,27 +87,49 @@ function findBed(visual) {
   visual.root.position.copy(saved[0]);visual.root.quaternion.copy(saved[1]);visual.root.updateMatrixWorld(true);
   if(spots.length<12)return null;
   const floor=spots.map(p=>p.y).sort((a,b)=>a-b)[Math.floor(spots.length/2)];
-  const bed=spots.filter(p=>Math.abs(p.y-floor)<.08);
-  const b=new THREE.Box3().setFromPoints(bed);
+  const b=new THREE.Box3().setFromPoints(spots.filter(p=>Math.abs(p.y-floor)<.08));
   return {min:b.min,max:b.max,floor};
 }
 
-// Procedural rose petals: a cupped teardrop shape, one InstancedMesh with
-// per-petal colour. Petals inherit the car's motion, then air drag holds them
-// back so they stream behind it, flutter (sway + tumble) and settle flat.
-function petalGeometry() {
-  const s=new THREE.Shape();
-  s.moveTo(0,-.16);
-  s.bezierCurveTo(.13,-.12,.15,.07,.07,.15);
-  s.quadraticCurveTo(0,.19,-.07,.15);
-  s.bezierCurveTo(-.15,.07,-.13,-.12,0,-.16);
-  const g=new THREE.ShapeGeometry(s,6),p=g.attributes.position;
-  // Cup the petal and curl its tip, like a real rose petal.
-  for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i);p.setZ(i,x*x*2.2+Math.max(0,y)*y*.9);}
-  g.computeVertexNormals();return g;
+// A bouquet that fills the bed. Each kind is drawn with a few InstancedMeshes.
+class BedBouquet {
+  constructor(parent,bed,count=84) {
+    this.group=new THREE.Group();this.group.name='BedBouquet';parent.add(this.group);
+    const petal=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.5,metalness:0,side:THREE.DoubleSide});
+    const green=new THREE.MeshStandardMaterial({color:0x3f8f3a,roughness:.7,metalness:0,side:THREE.DoubleSide});
+    const yellow=new THREE.MeshStandardMaterial({color:0xffc533,roughness:.6,metalness:0});
+    this.materials=[petal,green,yellow];
+    const placed=KINDS.map(()=>[]);
+    // Jittered grid over the bed so the flowers cover it evenly.
+    const cols=7,rows=Math.max(4,Math.round(count/cols));
+    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+      const x=bed.min.x+(bed.max.x-bed.min.x)*((c+.5+rand(-.35,.35))/cols);
+      const z=bed.min.z+(bed.max.z-bed.min.z)*((r+.5+rand(-.35,.35))/rows);
+      const m=new THREE.Matrix4().compose(new THREE.Vector3(x,bed.floor-.02,z),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler(rand(-.28,.28),rand(0,Math.PI*2),rand(-.28,.28))),
+        new THREE.Vector3().setScalar(rand(.85,1.25)));
+      placed[pickKind()].push(m);
+    }
+    this.count=0;
+    KINDS.forEach((kind,k)=>{
+      const list=placed[k];if(!list.length)return;this.count+=list.length;
+      const head=kind.head().scale(HEAD,HEAD,HEAD).translate(0,kind.headY,0);
+      const add=(geometry,material,colors)=>{
+        const mesh=new THREE.InstancedMesh(geometry,material,list.length);mesh.castShadow=true;mesh.receiveShadow=true;
+        list.forEach((m,i)=>{mesh.setMatrixAt(i,m);if(colors)mesh.setColorAt(i,new THREE.Color(pick(colors)));});
+        this.group.add(mesh);return mesh;
+      };
+      add(head,petal,kind.colors);add(kind.stem(),green);
+      if(kind.center)add(kind.center().scale(HEAD,HEAD,HEAD).translate(0,kind.headY+.012,0),yellow);
+    });
+  }
+  dispose(){this.group.removeFromParent();this.group.traverse(o=>{if(o.isInstancedMesh){o.geometry.dispose();o.dispose();}});this.materials.forEach(m=>m.dispose());}
 }
-const PETAL_COLORS=[0xb3001b,0xc8102e,0xd7263d,0xe23b4e,0xff5c7a,0xff8fa3,0x9e0b25].map(c=>new THREE.Color(c));
 
+// Rose petals: one InstancedMesh with per-petal colour. Petals inherit the
+// car's motion, then air drag holds them back so they stream behind it,
+// flutter (sway + tumble) and settle flat on the ground.
+const PETAL_COLORS=[0xb3001b,0xc8102e,0xd7263d,0xe23b4e,0xff5c7a,0xff8fa3,0x9e0b25].map(c=>new THREE.Color(c));
 class PetalStorm {
   constructor(parent,capacity=900) {
     this.capacity=capacity;this.next=0;this.used=0;this.time=0;
@@ -135,73 +182,30 @@ class PetalStorm {
 }
 
 export class FlowerEffects {
-  constructor({visual,kinds,ground=()=>0,trailCapacity=160}) {
-    this.visual=visual;this.kinds=kinds;this.ground=ground;this.enabled=true;
-    this.bed=findBed(visual);this.falling=[];this.emit=0;this.petalEmit=0;
-    this.m=new THREE.Matrix4();this.q=new THREE.Quaternion();this.e=new THREE.Euler();this.s=new THREE.Vector3();this.p=new THREE.Vector3();
-    this.bedFlowers=new FlowerInstances(visual.root,kinds,60);
-    this.trail=new FlowerInstances(visual.root.parent,kinds,trailCapacity);
+  constructor({visual,ground=()=>0}) {
+    this.visual=visual;this.ground=ground;this.enabled=true;this.petalEmit=0;
+    this.bed=findBed(visual);
+    this.bouquet=this.bed?new BedBouquet(visual.root,this.bed):null;
     this.petals=new PetalStorm(visual.root.parent);
-    if(this.bed)this.fillBed();
   }
   get hasBed(){return !!this.bed;}
-  fillBed() {
-    const {min,max,floor}=this.bed,cols=5,rows=9;
-    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-      const x=min.x+(max.x-min.x)*((c+.5+(Math.random()-.5)*.6)/cols),z=min.z+(max.z-min.z)*((r+.5+(Math.random()-.5)*.6)/rows);
-      this.e.set((Math.random()-.5)*.5,Math.random()*Math.PI*2,(Math.random()-.5)*.5);
-      this.m.compose(this.p.set(x,floor-.02,z),this.q.setFromEuler(this.e),this.s.setScalar(1.9+Math.random()*.7));
-      this.bedFlowers.add(pickKind(),this.m);
-    }
-  }
   // speed: signed forward speed; velocity: chassis velocity in parent space.
   update(dt,{speed=0,maxSpeed=14,velocity=null}={}) {
-    const root=this.visual.root;
-    const pace=Math.min(1,Math.abs(speed)/maxSpeed);
     if(this.enabled&&this.bed&&Math.abs(speed)>.8){
-      // Mostly petals; a whole flower now and then.
-      this.petalEmit+=dt*(14+70*pace);
-      while(this.petalEmit>=1){this.petalEmit-=1;this.spawnPetal(root,velocity);}
-      if(Math.abs(speed)>1.2){
-        this.emit+=dt*(.8+2.5*pace);
-        while(this.emit>=1){this.emit-=1;this.spawn(root,velocity);}
-      }
-    }else{this.emit=0;this.petalEmit=0;}
+      this.petalEmit+=dt*(14+70*Math.min(1,Math.abs(speed)/maxSpeed));
+      while(this.petalEmit>=1){this.petalEmit-=1;this.spawnPetal(velocity);}
+    }else this.petalEmit=0;
     this.petals.update(dt);
-    for(let i=this.falling.length-1;i>=0;i--){
-      const f=this.falling[i];
-      f.v.y-=9.82*dt;f.pos.addScaledVector(f.v,dt);f.rot.x+=f.spin.x*dt;f.rot.z+=f.spin.z*dt;
-      let landed=false;
-      if(f.pos.y<=f.groundY){f.pos.y=f.groundY;f.rot.x=(Math.random()-.5)*.35;f.rot.z=(Math.random()-.5)*.35;landed=true;}
-      this.m.compose(f.pos,this.q.setFromEuler(f.rot),this.s.setScalar(f.scale));this.trail.set(f.kind,f.slot,this.m);
-      if(landed)this.falling.splice(i,1);
-    }
   }
-  spawnPetal(root,velocity) {
-    const {min,max,floor}=this.bed,r=Math.random;
-    // Lift off the top of the flower pile anywhere in the bed.
-    const p=new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.55+r()*.25,min.z+(max.z-min.z)*r()).applyQuaternion(root.quaternion).add(root.position);
+  spawnPetal(velocity) {
+    const root=this.visual.root,{min,max,floor}=this.bed,r=Math.random;
+    // Lift off the top of the bouquet anywhere in the bed.
+    const p=new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.6+r()*.25,min.z+(max.z-min.z)*r()).applyQuaternion(root.quaternion).add(root.position);
     const v=new THREE.Vector3((r()-.5)*2.2,1.6+r()*2.2,(r()-.5)*2.2);
     v.addScaledVector(new THREE.Vector3(0,0,-1).applyQuaternion(root.quaternion),.6+r()*.8);
     if(velocity)v.addScaledVector(velocity,.85);
     this.petals.emit(p.x,p.y,p.z,v.x,v.y,v.z,this.ground(p.x+v.x*.35,p.z+v.z*.35));
   }
-  spawn(root,velocity) {
-    const {min,max}=this.bed,kind=pickKind();
-    const local=new THREE.Vector3(min.x+(max.x-min.x)*Math.random(),this.bed.floor+.5,min.z+.1);
-    const pos=local.applyQuaternion(root.quaternion).add(root.position);
-    const back=new THREE.Vector3(0,0,-1).applyQuaternion(root.quaternion),side=new THREE.Vector3(1,0,0).applyQuaternion(root.quaternion);
-    const v=new THREE.Vector3().addScaledVector(back,1.2+Math.random()).addScaledVector(side,(Math.random()-.5)*2.4);v.y=2+Math.random()*1.5;
-    if(velocity)v.addScaledVector(velocity,.55);
-    const rot=new THREE.Euler(Math.random()*Math.PI,Math.random()*Math.PI*2,Math.random()*Math.PI);
-    const f={kind,pos,v,rot,spin:new THREE.Vector3((Math.random()-.5)*9,0,(Math.random()-.5)*9),scale:2.3+Math.random()*.8,groundY:0};
-    // Land where the flower will be after ~0.45 s of flight.
-    f.groundY=this.ground(pos.x+v.x*.45,pos.z+v.z*.45);
-    this.m.compose(pos,this.q.setFromEuler(rot),this.s.setScalar(f.scale));
-    f.slot=this.trail.add(kind,this.m);
-    // A reused slot may still be falling; drop the stale entry.
-    this.falling=this.falling.filter(o=>o.kind!==kind||o.slot!==f.slot);this.falling.push(f);
-  }
-  clearTrail(){this.trail.clear();this.petals.clear();this.falling.length=0;this.emit=0;this.petalEmit=0;}
-  dispose(){this.bedFlowers.dispose();this.trail.dispose();this.petals.dispose();}
+  clearTrail(){this.petals.clear();this.petalEmit=0;}
+  dispose(){this.bouquet?.dispose();this.petals.dispose();}
 }

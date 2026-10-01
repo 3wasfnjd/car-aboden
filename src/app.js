@@ -5,7 +5,8 @@ import { CarVisual } from './visuals.js';
 import { TestWorld } from './world.js';
 import { InputController } from './input.js';
 import { loadVehicleModel } from './models.js';
-import { loadFlowerKinds, FlowerEffects } from './flowers.js';
+import { FlowerEffects } from './flowers.js';
+import { applyRosePaint } from './paint.js';
 export async function boot() {
   const $=id=>document.getElementById(id),canvas=$('view');
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
@@ -36,9 +37,8 @@ export async function boot() {
   // Flowers land on the lab's top surface under the drop point.
   let flowers=null;const groundRay=new THREE.Raycaster(),downRay=new THREE.Vector3(0,-1,0),rayOrigin=new THREE.Vector3();
   const groundAt=(x,z)=>{groundRay.set(rayOrigin.set(x,20,z),downRay);const hit=groundRay.intersectObjects(lab.meshes,false)[0];return hit?hit.point.y:0;};
-  if(!window.MOTRI_SINGLE_FILE){
-    try{flowers=new FlowerEffects({visual,kinds:await loadFlowerKinds('models/flowers/'),ground:groundAt});}catch(e){console.warn(e);}
-  }
+  // Pink paint, painted roses and a procedural bouquet in the bed.
+  try{modelStatus.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual,ground:groundAt});}catch(e){console.warn(e);}
   function start(){if(dead)return;running=true;paused=false;everStarted=true;input.setEnabled(true);last=performance.now();accumulator=0;$('intro').hidden=true;$('hud').hidden=false;}
   $('start').disabled=false;$('start').textContent='ابدأ القيادة';
   $('loadState').textContent=modelStatus.loaded?'GMC جاهزة • أربع عجلات متحركة':modelStatus.error?'تعذر تحميل GMC؛ السيارة المؤقتة متاحة: '+modelStatus.error:'جاهزة للتجربة • بدون كاميرا';

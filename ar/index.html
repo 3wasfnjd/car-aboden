@@ -100,7 +100,8 @@ import { MotriVehicle } from '../src/vehicle.js';
 import { CarVisual } from '../src/visuals.js';
 import { InputController } from '../src/input.js';
 import { loadVehicleModel } from '../src/models.js';
-import { loadFlowerKinds, FlowerEffects } from '../src/flowers.js';
+import { FlowerEffects } from '../src/flowers.js';
+import { applyRosePaint } from '../src/paint.js';
 window.THREE=THREE;
 
 function syncViewport(){
@@ -178,8 +179,9 @@ async function setupScene(){
   try{status=await loadVehicleModel(visual,'../models/vehicle.json',car);}catch(e){console.warn(e);notify('تعذر تحميل GMC؛ تظهر السيارة المؤقتة');}
   visual.sync(car);
   const box=new THREE.Box3().setFromObject(visual.root);carLength=Math.max(1,box.max.z-box.min.z);
-  // Flowers ride in the bed and drop behind the car; the AR floor is Y=0.
-  try{flowers=new FlowerEffects({visual,kinds:await loadFlowerKinds('../models/flowers/')});}catch(e){console.warn(e);}
+  // Pink paint and painted roses; a procedural bouquet in the bed sheds petals
+  // behind the car onto the AR floor (Y=0).
+  try{status.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual});}catch(e){console.warn(e);}
   showSize();
   window.__motriAr={car,visual,anchor,status,get flowers(){return flowers;},get placed(){return placed;}};
   sceneReady=true;lastTick=performance.now();
