@@ -7,6 +7,8 @@
 <meta name="description" content="موتري AR: سُق السيارة على أرضك الحقيقية عبر كاميرا الجوال، على آيفون وأندرويد.">
 <title>موتري · قيادة بالواقع المعزز</title>
 <link rel="stylesheet" href="../style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;800&display=swap">
 <!-- 8th Wall engine: markerless SLAM in mobile Safari and Chrome (same build as AR-Aboden). -->
 <script src="https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js" async crossorigin="anonymous" data-preload-chunks="slam"></script>
 <script type="importmap">
@@ -57,27 +59,77 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
 .steer-buttons .drive-btn{width:80px;height:80px}.steer-buttons .drive-btn b{font-size:30px}
 .steer-buttons .drive-btn.active{background:#2f6fb0;border-color:#dbeeff;transform:scale(.94)}
 @keyframes cruise{50%{box-shadow:0 0 0 10px #2a9d7820,0 0 30px #5ef2c050}}
+
+/* ---- Candy theme: pink jelly buttons that match the rose car ---- */
+:root{--p50:#fff5f9;--p100:#ffe3ee;--p200:#ffc6dc;--p300:#ff9fc6;--p400:#ff7cb1;--p500:#f25c9c;--p600:#d93d82;--p700:#a8245f;--cute:'Baloo Bhaijaan 2',Tahoma,Arial,sans-serif}
+.candy{position:relative;border:3px solid #fff;color:#fff;font-family:var(--cute);font-weight:800;
+  background:radial-gradient(90% 55% at 50% 8%,#ffffffa6 0 38%,#fff0 40%),linear-gradient(180deg,var(--p300),var(--p500));
+  box-shadow:0 6px 0 var(--p600),0 12px 22px #a8245f55,inset 0 -6px 10px #c4206a40;
+  text-shadow:0 1px 2px #a8245f99;transition:transform .08s,box-shadow .08s,background .2s;-webkit-tap-highlight-color:transparent}
+.candy::after{content:"♥";position:absolute;top:13%;right:17%;font-size:11px;line-height:1;color:#fff;opacity:.9;text-shadow:none}
+.candy:active,.candy.active{transform:translateY(5px);box-shadow:0 1px 0 var(--p600),0 4px 8px #a8245f44,inset 0 -3px 8px #c4206a40}
+.candy svg{width:46%;height:46%;filter:drop-shadow(0 2px 1px #a8245f80)}
+.drive-btn.candy{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
+.drive-btn.candy small{font-size:13px;margin:-2px 0 0;letter-spacing:0}
+#fwdBtn.candy{width:104px;height:104px}#fwdBtn.candy svg{width:42%;height:42%}
+#revBtn.candy{width:70px;height:70px}#revBtn.candy small{font-size:10px;margin-top:-4px}#revBtn.candy::after{display:none}
+.steer-buttons .drive-btn.candy{width:84px;height:84px}
+/* Cruise on: deeper rose, a heartbeat glow and a shimmering ring. */
+#fwdBtn.candy[aria-pressed=true]{background:radial-gradient(90% 55% at 50% 8%,#ffffff99 0 38%,#fff0 40%),linear-gradient(180deg,#ff5c8f,#e2245a);
+  box-shadow:0 6px 0 #a3123f,0 0 0 7px #ff7cb155,0 0 34px #ff5c9caa;animation:heartbeat 1.4s ease-in-out infinite}
+#fwdBtn.candy[aria-pressed=true]::before{content:"";position:absolute;inset:-11px;border-radius:50%;padding:3px;
+  background:conic-gradient(from 0deg,#fff0,#fff,#ffd6e8,#fff0 40%,#fff0 60%,#fff,#fff0);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:spin 2.4s linear infinite}
+@keyframes heartbeat{0%,100%{transform:scale(1)}15%{transform:scale(1.06)}30%{transform:scale(.98)}45%{transform:scale(1.04)}}
+@keyframes spin{to{transform:rotate(1turn)}}
+#revBtn.candy.active{background:radial-gradient(90% 55% at 50% 8%,#ffffff99 0 38%,#fff0 40%),linear-gradient(180deg,#c9a7ff,#9b6bf2);box-shadow:0 1px 0 #7445c9,0 4px 10px #7445c955}
+.steer-buttons .drive-btn.candy.active{background:radial-gradient(90% 55% at 50% 8%,#ffffff99 0 38%,#fff0 40%),linear-gradient(180deg,#ff7cb1,#e2245a)}
+/* Small pearl buttons, menu and status in the same palette. */
+.round.pearl{width:44px;height:44px;border:3px solid #fff;color:var(--p600);font-size:20px;font-weight:800;font-family:var(--cute);
+  background:radial-gradient(90% 55% at 50% 10%,#fff 0 40%,#fff0 42%),linear-gradient(180deg,var(--p50),var(--p200));
+  box-shadow:0 4px 0 var(--p300),0 8px 14px #a8245f40;backdrop-filter:none;-webkit-backdrop-filter:none}
+.round.pearl:active{transform:translateY(3px);box-shadow:0 1px 0 var(--p300)}
+#menu{background:#fff5f9f2;border:3px solid #fff;border-radius:22px;padding:10px;gap:8px;box-shadow:0 14px 30px #a8245f40;top:calc(max(12px,env(safe-area-inset-top)) + 56px)}
+#menu button{font-family:var(--cute);font-weight:800;font-size:15px;color:var(--p700);background:linear-gradient(180deg,#fff,var(--p100));border:2px solid #fff;border-radius:16px;box-shadow:0 3px 0 var(--p200);padding:10px 16px}
+#menu button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--p200)}
+#arStatus{background:#fff5f9f0;border:2px solid #fff;color:var(--p700);font-family:var(--cute);font-weight:600;font-size:13px;box-shadow:0 8px 20px #a8245f30}
+#arStatus .status-dot{background:var(--p400)}#arStatus.ready .status-dot{background:#4cc38a}
+.size{background:#fff5f9f0;border:3px solid #fff;border-radius:999px;padding:6px;box-shadow:0 8px 20px #a8245f33}
+.size button.candy{width:46px;height:46px;border-radius:50%;font-size:26px;line-height:1;padding:0;display:grid;place-items:center}
+.size button.candy::after{display:none}
+.size output{font-family:var(--cute);font-weight:800;font-size:16px;color:var(--p700)}
+#placeBtn.candy{border-radius:999px;min-height:58px;font-size:19px}
+#placeBtn.candy:disabled{filter:saturate(.45) brightness(1.08);opacity:.8}
+#arIntro{background:radial-gradient(120% 80% at 50% 0%,#ffe3eef5,#fff5f9f5)}
+#arIntro .intro-card{border:3px solid #fff;box-shadow:0 24px 60px #a8245f30;background:#fffafcf7}
+#arIntro .intro-card h1,#arIntro .tagline{font-family:var(--cute)}#arIntro .brand-dot{color:var(--p500)}
+#arIntro .start.candy{border-radius:999px;font-size:19px;min-height:58px}
+/* Wide pills get a soft gloss band instead of the round jelly highlight. */
+#placeBtn.candy,#arIntro .start.candy,.size button.candy{color:#fff}
+#placeBtn.candy,#arIntro .start.candy{background:linear-gradient(180deg,#ffffff73 0,#ffffff1a 48%,#fff0 50%),linear-gradient(180deg,var(--p300),var(--p500));border:3px solid #fff}
+#placeBtn.candy::after,#arIntro .start.candy::after{display:none}
+.size button.candy{background:radial-gradient(90% 55% at 50% 8%,#ffffffa6 0 38%,#fff0 40%),linear-gradient(180deg,var(--p300),var(--p500));border:3px solid #fff}
 </style>
 </head>
 <body>
 <canvas id="camerafeed"></canvas>
 <main id="hud">
-  <button id="exitAr" class="round" aria-label="خروج من الواقع المعزز">×</button>
-  <button id="menuBtn" class="round" aria-label="خيارات" aria-expanded="false" hidden>⋯</button>
+  <button id="exitAr" class="round pearl" aria-label="خروج من الواقع المعزز">×</button>
+  <button id="menuBtn" class="round pearl" aria-label="خيارات" aria-expanded="false" hidden>⋯</button>
   <div id="menu" hidden>
-    <button id="reset">↻ إعادة السيارة</button>
-    <button id="move">⌖ نقل السيارة</button>
-    <button id="flowersBtn" aria-pressed="true">🌹 الورود والبلورات</button>
+    <button id="reset">🔄 إعادة السيارة</button>
+    <button id="move">📍 نقل السيارة</button>
+    <button id="flowersBtn" aria-pressed="true">🌸 الورود والبلورات</button>
   </div>
   <div id="arStatus" role="status"><span class="status-dot"></span><span id="statusText">تشغيل الكاميرا…</span></div>
   <section id="placement">
-    <div class="size" aria-label="حجم السيارة"><button id="sizeDown" aria-label="تصغير">−</button><output id="sizeValue">35 سم</output><button id="sizeUp" aria-label="تكبير">+</button></div>
-    <button id="placeBtn" disabled>ثبّت السيارة هنا</button>
+    <div class="size" aria-label="حجم السيارة"><button id="sizeDown" class="candy" aria-label="تصغير">−</button><output id="sizeValue">35 سم</output><button id="sizeUp" class="candy" aria-label="تكبير">+</button></div>
+    <button id="placeBtn" class="candy" disabled>🌸 ثبّت السيارة هنا</button>
   </section>
   <div class="drive-controls" id="driveControls" hidden>
     <div class="steer-buttons">
-      <button id="leftBtn" class="drive-btn" aria-label="يسار: اضغط باستمرار"><b>◀</b></button>
-      <button id="rightBtn" class="drive-btn" aria-label="يمين: اضغط باستمرار"><b>▶</b></button>
+      <button id="leftBtn" class="drive-btn candy" aria-label="يسار: اضغط باستمرار"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5l-7 7 7 7" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button id="rightBtn" class="drive-btn candy" aria-label="يمين: اضغط باستمرار"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5l7 7-7 7" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
     <div class="steering-wrap" hidden>
       <div id="steering" role="slider" tabindex="0" aria-label="المقود: اسحب يمينًا أو يسارًا" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-orientation="horizontal">
@@ -92,8 +144,8 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
       </div>
     </div>
     <div class="drive-buttons">
-      <button id="fwdBtn" class="drive-btn" aria-pressed="false" aria-label="قدّام: اضغط مرة للمشي المستمر ومرة للوقوف"><b>▲</b><small>قدّام</small></button>
-      <button id="revBtn" class="drive-btn" aria-label="رجوع: اضغط باستمرار"><b>▼</b><small>رجوع</small></button>
+      <button id="fwdBtn" class="drive-btn candy" aria-pressed="false" aria-label="قدّام: اضغط مرة للمشي المستمر ومرة للوقوف"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><small>قدّام</small></button>
+      <button id="revBtn" class="drive-btn candy" aria-label="رجوع: اضغط باستمرار"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.5l7 7 7-7" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><small>رجوع</small></button>
     </div>
     <!-- The game's lever/brake stay in the DOM for InputController but are hidden in AR. -->
     <div class="right-controls" hidden>
@@ -116,7 +168,7 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
     <h1>موتري<span class="brand-dot">.</span></h1>
     <p class="tagline">السيارة على أرضك.<br><strong>وأنت تسوقها.</strong></p>
     <p class="intro-text">اسمح بالكاميرا، وجّه الجوال للأرض وحرّكه ببطء حتى تظهر السيارة، اختر حجمها ثم ثبّتها وسُقها بنفس تحكم اللعبة.</p>
-    <button id="startBtn" class="start" disabled>تجهيز محرك الواقع المعزز…</button>
+    <button id="startBtn" class="start candy" disabled>تجهيز محرك الواقع المعزز…</button>
     <p id="loadState" class="load-state" role="status"></p>
     <div id="arError"></div>
     <a class="back" href="../">الرجوع إلى ساحة الاختبار</a>
