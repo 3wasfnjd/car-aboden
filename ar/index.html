@@ -2,56 +2,251 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#203831">
-<meta name="description" content="موتري AR: اعرض السيارة وحدها في مكانك الحقيقي عبر كاميرا الجوال.">
-<title>موتري · السيارة في الواقع المعزز</title>
-<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
+<meta name="description" content="موتري AR: سُق السيارة على أرضك الحقيقية عبر كاميرا الجوال، على آيفون وأندرويد.">
+<title>موتري · قيادة بالواقع المعزز</title>
+<link rel="stylesheet" href="../style.css">
+<!-- 8th Wall engine: markerless SLAM in mobile Safari and Chrome (same build as AR-Aboden). -->
+<script src="https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js" async crossorigin="anonymous" data-preload-chunks="slam"></script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}
+</script>
 <style>
-:root{--ink:#203831;--muted:#6a7b72;--cream:#f6f4e9;--orange:#f5b36c;font-family:Tahoma,Arial,sans-serif;color:var(--ink);color-scheme:light}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#e2e4d7}
-button,a{font:inherit}[hidden]{display:none!important}
-model-viewer{position:fixed;inset:0;width:100%;height:100%;background:transparent;--poster-color:transparent;--progress-bar-color:var(--orange)}
-.top{position:fixed;z-index:2;top:max(14px,env(safe-area-inset-top));left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right));display:flex;align-items:center;justify-content:space-between;gap:10px;pointer-events:none}
-.brand{font-size:25px;font-weight:bold;line-height:1.1}.brand span{color:#cb8b43}.brand small{display:block;font-size:9px;margin-top:7px;color:#5b7065;font-weight:normal}
-.top a{pointer-events:auto;text-decoration:none;color:var(--ink);border:1px solid #ffffffae;background:#f6f5eade;border-radius:12px;height:44px;display:flex;align-items:center;padding:0 13px;font-size:12px}
-.panel{position:fixed;z-index:2;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom));width:min(420px,calc(100% - 32px));background:#f8f8effa;border-radius:20px;padding:16px;box-shadow:0 16px 50px #20383126;text-align:center}
-#arButton{background:var(--ink);color:var(--cream);border:0;width:100%;padding:15px;border-radius:13px;font-weight:bold;font-size:16px;min-height:52px;cursor:pointer}
-#arButton:disabled{opacity:.55;cursor:default}
-#status{font-size:11px;line-height:1.8;color:var(--muted);margin:10px 0 0;min-height:20px}
-@media(max-height:500px){.panel{left:auto;right:max(16px,env(safe-area-inset-right));transform:none;width:300px;padding:12px}#arButton{min-height:44px;padding:11px;font-size:14px}#status{font-size:10px;line-height:1.6;margin-top:6px}}
+html,body{background:#05070b}
+#camerafeed{position:fixed!important;left:0!important;top:0!important;width:100vw!important;height:100dvh!important;display:block;z-index:0}
+#arIntro{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:18px;background:#e3e9daf2;overflow:auto;touch-action:pan-y}
+#arIntro .intro-card{width:min(420px,100%)}
+#arIntro .intro-card h1{font-size:56px;margin:14px 0 6px}
+#arIntro .intro-text{margin-bottom:16px}
+#arError{display:none;margin-top:12px;background:#fbe3d6;color:#7a3417;border-radius:10px;padding:10px;font-size:12px;line-height:1.7}
+.back{display:block;text-align:center;margin-top:14px;font-size:12px;color:var(--muted)}
+#arStatus{position:absolute;top:calc(max(14px,env(safe-area-inset-top)) + 64px);left:50%;transform:translateX(-50%);max-width:90%;width:max-content;background:#f7f7eef0;border-radius:30px;padding:10px 14px;display:flex;align-items:center;gap:9px;font-size:11px;line-height:1.6}
+#arStatus .status-dot{background:var(--orange)}#arStatus.ready .status-dot{background:var(--mint)}
+#placement{position:absolute;left:50%;transform:translateX(-50%);bottom:max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:auto;width:min(340px,calc(100% - 32px))}
+.size{display:flex;align-items:center;gap:10px;background:#f7f6eaf2;border-radius:16px;padding:6px}
+.size button{width:44px;height:44px;border:0;border-radius:12px;background:#e3eadc;color:var(--ink);font-size:22px}
+.size output{min-width:96px;text-align:center;font-size:12px;font-weight:bold}
+#placeBtn{width:100%;min-height:54px;border:0;border-radius:14px;background:var(--ink);color:var(--cream);font-weight:bold;font-size:16px}
+#placeBtn:disabled{opacity:.5;cursor:default}
+#hud .bottom-tools{bottom:max(12px,env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
-<model-viewer id="car" alt="سيارة موتري" ar ar-modes="webxr scene-viewer quick-look" ar-placement="floor" ar-scale="auto" camera-orbit="-35deg 72deg auto"
-  camera-controls touch-action="pan-y" shadow-intensity="0" environment-image="neutral" interaction-prompt="none" loading="eager">
-  <button slot="ar-button" hidden></button>
-</model-viewer>
-<header class="top"><div class="brand">موتري<span>.</span><small>السيارة في الواقع المعزز</small></div><a href="../">القيادة ←</a></header>
-<section class="panel">
-  <button id="arButton" disabled>تحميل السيارة…</button>
-  <p id="status" role="status">السيارة وحدها، بلا أرضية أو ساحة اختبار.</p>
+<canvas id="camerafeed"></canvas>
+<main id="hud">
+  <header class="topbar">
+    <div class="brand">موتري<span>.</span><small>قيادة بالواقع المعزز</small></div>
+    <nav class="nav"><button id="exitAr" aria-label="الرجوع للعبة">خروج</button></nav>
+  </header>
+  <div id="arStatus" role="status"><span class="status-dot"></span><span id="statusText">تشغيل الكاميرا…</span></div>
+  <section id="placement">
+    <div class="size" aria-label="حجم السيارة"><button id="sizeDown" aria-label="تصغير">−</button><output id="sizeValue">35 سم</output><button id="sizeUp" aria-label="تكبير">+</button></div>
+    <button id="placeBtn" disabled>ثبّت السيارة هنا</button>
+  </section>
+  <div class="drive-controls" id="driveControls" hidden>
+    <div class="steering-wrap">
+      <div id="steering" role="slider" tabindex="0" aria-label="المقود: اسحب يمينًا أو يسارًا" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-orientation="horizontal">
+        <svg id="steeringWheel" viewBox="0 0 160 160" aria-hidden="true">
+          <circle class="wheel-halo" cx="80" cy="80" r="74"/>
+          <circle class="wheel-rim" cx="80" cy="80" r="59"/>
+          <path class="wheel-spoke" d="M28 63L66 76M132 63L94 76M80 139V94"/>
+          <circle class="wheel-hub" cx="80" cy="80" r="21"/>
+          <path class="wheel-notch" d="M80 16V28"/>
+          <circle class="wheel-bolt" cx="80" cy="80" r="5"/>
+        </svg>
+      </div>
+      <small>اسحب المقود يمينًا / يسارًا</small>
+    </div>
+    <div class="right-controls">
+      <button id="precision" aria-pressed="false">قيادة دقيقة</button>
+      <div class="pedals">
+        <button id="brake" class="pedal brake" aria-pressed="false" aria-label="الفرامل"><span class="pedal-tread" aria-hidden="true"></span><b>فرامل</b></button>
+        <div id="accelerator" class="throttle-lever" role="slider" tabindex="0" aria-label="البنزين والقير: اسحب لأعلى للتقدم ولأسفل للرجوع" aria-orientation="vertical" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-valuetext="محايد" data-drive="N">
+          <span class="lever-label forward" aria-hidden="true">↑ قدّام</span>
+          <span class="lever-track" aria-hidden="true"></span>
+          <span id="throttleKnob" aria-hidden="true"><b id="throttleMode">N</b><i></i></span>
+          <span class="lever-label reverse" aria-hidden="true">رجوع ↓</span>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-tools"><button id="reset" aria-label="إعادة السيارة لمكانها">↻ <span>إعادة السيارة</span></button><button id="move" aria-label="نقل السيارة لمكان آخر">⌖ <span>نقل السيارة</span></button></div>
+  </div>
+</main>
+<section id="arIntro">
+  <div class="intro-card">
+    <span class="eyebrow">MOTRI / AR <span>آيفون وأندرويد</span></span>
+    <h1>موتري<span class="brand-dot">.</span></h1>
+    <p class="tagline">السيارة على أرضك.<br><strong>وأنت تسوقها.</strong></p>
+    <p class="intro-text">اسمح بالكاميرا، وجّه الجوال للأرض وحرّكه ببطء حتى تظهر السيارة، اختر حجمها ثم ثبّتها وسُقها بنفس تحكم اللعبة.</p>
+    <button id="startBtn" class="start" disabled>تجهيز محرك الواقع المعزز…</button>
+    <p id="loadState" class="load-state" role="status"></p>
+    <div id="arError"></div>
+    <a class="back" href="../">الرجوع إلى ساحة الاختبار</a>
+  </div>
 </section>
+<div id="toast" role="status"></div>
 <script type="module">
-// AR shows only the car selected in models/vehicle.json. The GLB has no
-// floor/shadow plane, and the viewer draws no ground shadow (shadow-intensity 0).
-const viewer=document.getElementById('car'),button=document.getElementById('arButton'),status=document.getElementById('status');
-const say=text=>{status.textContent=text;};
-try{
-  const response=await fetch('../models/vehicle.json',{cache:'no-cache'});
-  if(!response.ok)throw new Error('ملف إعداد الموديل غير متاح');
-  const cfg=await response.json();
-  if(!cfg.enabled||!cfg.model)throw new Error('لا يوجد موديل سيارة مفعّل');
-  await customElements.whenDefined('model-viewer');
-  viewer.addEventListener('load',()=>{
-    if(viewer.canActivateAR){button.disabled=false;button.textContent='اعرض السيارة في مكانك';say('وجّه الكاميرا للأرض وحرّك الجوال قليلًا. اسحب لتحريك السيارة وقرّب بإصبعين لتغيير حجمها.');}
-    else{button.textContent='الواقع المعزز للجوال فقط';say('افتح هذا الرابط من جوال يدعم AR: أندرويد (Chrome) أو آيفون (Safari).');}
-  },{once:true});
-  viewer.addEventListener('error',()=>{button.textContent='تعذر تحميل السيارة';say('تحقق من الاتصال وأعد فتح الصفحة.');});
-  viewer.addEventListener('ar-status',e=>{if(e.detail.status==='failed')say('تعذر تشغيل AR على هذا الجهاز أو المتصفح.');});
-  viewer.src=new URL('../models/'+cfg.model,location.href).href;
-  button.addEventListener('click',()=>viewer.activateAR());
-}catch(e){console.error(e);button.textContent='تعذر التجهيز';say(e.message||String(e));}
+import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
+import { CONFIG, fixedSteps } from '../src/core.js';
+import { MotriVehicle } from '../src/vehicle.js';
+import { CarVisual } from '../src/visuals.js';
+import { InputController } from '../src/input.js';
+import { loadVehicleModel } from '../src/models.js';
+window.THREE=THREE;
+
+// The simulation runs in the game's own units (same tune as the test lab). Only
+// the rendered root is scaled down to toy size and anchored on XR8's floor (Y=0).
+// No floor is drawn: an invisible collider holds the car, and a shadow-only
+// plane gives contact with the real ground.
+const $=id=>document.getElementById(id);
+const SIZES=[.20,.25,.30,.35,.45,.60,.80];
+const SPAWN=[0,.72,0];
+const MAX_DISTANCE=60;
+// Room-scale tune: about 0.6 m/s at the default 35 cm size (game lab keeps 14).
+const AR_MAX_SPEED=9;
+let sizeIndex=3,carLength=5,placed=false,sceneReady=false,xrReady=false,xrStarted=false,failed=false;
+let scene,camera,renderer,anchor,visual,car,input,world,sun,shadowPlane,reticle;
+let trackingNormalSince=null,trackingLastSeen=-Infinity,trackingStatus='LIMITED';
+let lastTick=0,accumulator=0,stableSince=null,toastTimer=0;
+const ray=new THREE.Raycaster(),centre=new THREE.Vector2(0,0),ground=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+const hit=new THREE.Vector3(),preview=new THREE.Vector3(),lastHit=new THREE.Vector3(1e3,1e3,1e3),tmp=new THREE.Vector3();
+
+const notify=text=>{$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2200);};
+const setStatus=(text,ready=false)=>{$('statusText').textContent=text;$('arStatus').classList.toggle('ready',ready);};
+const fail=message=>{failed=true;sceneReady=false;$('arIntro').hidden=false;$('arError').style.display='block';$('arError').textContent=message;$('startBtn').disabled=false;$('startBtn').textContent='إعادة تحميل الصفحة';};
+const scale=()=>SIZES[sizeIndex]/carLength;
+function showSize(){$('sizeValue').textContent=`${Math.round(SIZES[sizeIndex]*100)} سم`;if(anchor)anchor.scale.setScalar(scale());}
+
+function trackingReady(now){return trackingStatus==='NORMAL'&&trackingNormalSince!==null&&now-trackingNormalSince>=800&&now-trackingLastSeen<=250;}
+
+function buildPhysics(){
+  world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0),allowSleep:false});
+  world.broadphase=new CANNON.SAPBroadphase(world);
+  world.solver.iterations=14;world.defaultContactMaterial.friction=.48;world.defaultContactMaterial.restitution=.02;
+  const floor=new CANNON.Body({mass:0,material:world.defaultMaterial,shape:new CANNON.Box(new CANNON.Vec3(200,.5,200))});
+  floor.position.set(0,-.5,0);world.addBody(floor);
+}
+
+async function setupScene(){
+  ({scene,camera,renderer}=XR8.Threejs.xrScene());
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;
+  scene.add(new THREE.HemisphereLight(0xffffff,0x596779,1.6));
+  sun=new THREE.DirectionalLight(0xffffff,2.2);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+  Object.assign(sun.shadow.camera,{left:-1,right:1,top:1,bottom:-1,near:.01,far:6});sun.shadow.bias=-.0005;
+  scene.add(sun,sun.target);
+  anchor=new THREE.Group();anchor.visible=false;scene.add(anchor);
+  shadowPlane=new THREE.Mesh(new THREE.PlaneGeometry(2*MAX_DISTANCE,2*MAX_DISTANCE),new THREE.ShadowMaterial({opacity:.28}));
+  shadowPlane.rotation.x=-Math.PI/2;shadowPlane.position.y=.005;shadowPlane.receiveShadow=true;anchor.add(shadowPlane);
+  reticle=new THREE.Mesh(new THREE.RingGeometry(.05,.065,40).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.9,depthWrite:false}));
+  reticle.visible=false;scene.add(reticle);
+  buildPhysics();
+  car=new MotriVehicle(world);car.params.maxSpeed=AR_MAX_SPEED;car.params.reverseSpeed=AR_MAX_SPEED*.6;car.checkpoint=[...SPAWN];car.reset();
+  visual=new CarVisual(anchor);
+  input=new InputController(resetCar,()=>{});input.setEnabled(false);
+  $('precision').addEventListener('click',()=>{input.precision=!input.precision;$('precision').setAttribute('aria-pressed',String(input.precision));$('precision').textContent=input.precision?'قيادة دقيقة: مفعّلة':'قيادة دقيقة';});
+  let status={loaded:false};
+  try{status=await loadVehicleModel(visual,'../models/vehicle.json',car);}catch(e){console.warn(e);notify('تعذر تحميل GMC؛ تظهر السيارة المؤقتة');}
+  visual.sync(car);
+  const box=new THREE.Box3().setFromObject(visual.root);carLength=Math.max(1,box.max.z-box.min.z);
+  showSize();
+  window.__motriAr={car,visual,anchor,status,get placed(){return placed;}};
+  sceneReady=true;lastTick=performance.now();
+  $('arIntro').hidden=true;setStatus('وجّه الجوال للأرض وحرّكه ببطء');
+}
+
+function resetCar(){input?.reset();car.reset();accumulator=0;visual.sync(car);}
+
+function place(){
+  if(!reticle.visible||$('placeBtn').disabled){notify('وجّه الكاميرا للأرض أولًا');return;}
+  placed=true;reticle.visible=false;resetCar();
+  $('placement').hidden=true;$('driveControls').hidden=false;input.setEnabled(true);
+  setStatus('سُق السيارة',true);
+}
+function move(){
+  placed=false;input.setEnabled(false);resetCar();
+  $('driveControls').hidden=true;$('placement').hidden=false;stableSince=null;
+  setStatus('وجّه الجوال للمكان الجديد');
+}
+
+function updatePreview(now){
+  camera.updateMatrixWorld(true);ray.setFromCamera(centre,camera);
+  const found=ray.ray.intersectPlane(ground,hit),distance=found?hit.distanceTo(camera.getWorldPosition(tmp)):Infinity;
+  if(!trackingReady(now)||!found||distance<.15||distance>5||ray.ray.direction.y>-.12){
+    reticle.visible=false;anchor.visible=false;stableSince=null;$('placeBtn').disabled=true;
+    setStatus(trackingReady(now)?'وجّه الجوال نحو الأرض أمامك':'حرّك الجوال ببطء حتى يستقر التتبع');return;
+  }
+  if(stableSince===null||lastHit.distanceTo(hit)>.18){stableSince=now;preview.copy(hit);}
+  else preview.lerp(hit,.35);
+  lastHit.copy(hit);preview.y=0;
+  reticle.visible=true;reticle.position.set(preview.x,.004,preview.z);
+  // Face away from the viewer so "forward" on the lever drives into the scene.
+  camera.getWorldDirection(tmp);
+  anchor.position.copy(preview);anchor.rotation.set(0,Math.atan2(tmp.x,tmp.z),0);anchor.visible=true;showSize();
+  const ready=now-stableSince>=350;$('placeBtn').disabled=!ready;
+  setStatus(ready?'جاهز — اختر الحجم وثبّت السيارة':'ثبّت الجوال لحظة…',ready);
+}
+
+function tick(now){
+  if(!sceneReady)return;
+  const dt=Math.min(.08,Math.max(0,(now-lastTick)/1000));lastTick=now;
+  if(!placed){updatePreview(now);}
+  else if(trackingReady(now)&&!document.hidden){
+    car.input=input.read();
+    const steps=fixedSteps(accumulator,dt);accumulator=steps.accumulator;
+    for(let i=0;i<steps.count;i++){car.beforeStep(CONFIG.step);world.step(CONFIG.step);car.afterStep(CONFIG.step);}
+    const p=car.body.position,up=new THREE.Vector3(0,1,0).applyQuaternion(visual.root.quaternion);
+    if(p.y< -5||Math.hypot(p.x,p.z)>MAX_DISTANCE||(up.y<.12&&Math.abs(car.speed)<.2&&(car.upsideTime=(car.upsideTime||0)+dt)>3)){car.upsideTime=0;resetCar();notify('رجعت السيارة لمكانها');}
+    else if(up.y>=.12)car.upsideTime=0;
+    if($('arStatus').classList.contains('ready')===false)setStatus('سُق السيارة',true);
+  }else if(placed){accumulator=0;setStatus('التتبع ضعيف — وجّه الجوال للأرض ببطء');}
+  visual.sync(car);
+  visual.root.getWorldPosition(tmp);
+  sun.target.position.copy(tmp);sun.position.copy(tmp).add(new THREE.Vector3(.6,2,.4));
+}
+
+function worldModule(){
+  return {
+    name:'motri-ar-drive',
+    onStart:async()=>{try{await setupScene();}catch(e){console.error(e);fail('تعذر تجهيز السيارة: '+(e.message||e));}},
+    onUpdate:({processCpuResult})=>{
+      const now=performance.now(),status=processCpuResult?.reality?.trackingStatus||'LIMITED';
+      trackingStatus=status;trackingLastSeen=now;
+      trackingNormalSince=status==='NORMAL'?(trackingNormalSince??now):null;
+      try{tick(now);}catch(e){console.error(e);fail('توقف التشغيل: '+(e.message||e));}
+    },
+    onCameraStatusChange:({status})=>{if(status==='failed')fail('تعذر فتح الكاميرا. اسمح بالكاميرا من إعدادات المتصفح ثم أعد المحاولة.');},
+    onException:e=>{console.error(e);if(!sceneReady)fail('تعذر تشغيل التتبع على هذا الجهاز أو المتصفح.');},
+  };
+}
+
+function initXR(){
+  if(xrReady||!window.XR8)return;
+  try{
+    XR8.XrController.configure({disableWorldTracking:false,enableLighting:true,enableWorldPoints:false,scale:'responsive'});
+    XR8.addCameraPipelineModules([XR8.GlTextureRenderer.pipelineModule(),XR8.Threejs.pipelineModule(),XR8.XrController.pipelineModule(),worldModule()]);
+    xrReady=true;$('startBtn').disabled=false;$('startBtn').textContent='افتح الكاميرا';
+  }catch(e){console.error(e);fail('لم يكتمل تحميل محرك AR.');}
+}
+
+$('startBtn').addEventListener('click',()=>{
+  if(failed){location.reload();return;}
+  if(!xrReady||xrStarted)return;
+  xrStarted=true;$('startBtn').disabled=true;$('startBtn').textContent='تحميل السيارة…';
+  $('loadState').textContent='اسمح بالكاميرا عند السؤال.';
+  try{XR8.run({canvas:$('camerafeed')});}catch(e){console.error(e);fail('تعذر تشغيل الكاميرا: '+(e.message||e));}
+});
+$('placeBtn').addEventListener('click',place);
+$('move').addEventListener('click',move);
+$('reset').addEventListener('click',()=>{resetCar();notify('رجعت السيارة لمكانها');});
+$('sizeDown').addEventListener('click',()=>{sizeIndex=Math.max(0,sizeIndex-1);showSize();});
+$('sizeUp').addEventListener('click',()=>{sizeIndex=Math.min(SIZES.length-1,sizeIndex+1);showSize();});
+$('exitAr').addEventListener('click',()=>{try{XR8.stop();}catch{}location.href='../';});
+document.addEventListener('visibilitychange',()=>{trackingNormalSince=null;lastTick=performance.now();input?.reset();});
+$('driveControls').hidden=true;
+if(window.XR8)initXR();else window.addEventListener('xrloaded',initXR,{once:true});
+setTimeout(()=>{if(!xrReady&&!failed)$('loadState').textContent='محرك AR يتأخر. تحقق من الاتصال ثم أعد تحميل الصفحة.';},12000);
 </script>
 </body>
 </html>
