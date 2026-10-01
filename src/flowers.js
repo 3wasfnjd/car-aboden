@@ -1,5 +1,5 @@
-// Procedural roses and flowers fixed in the truck bed, plus rose petals that
-// scatter while driving. No model files: every shape is built in code.
+// Procedural roses and flowers fixed in the truck bed, plus rose petals and
+// glowing crystals that scatter while driving. No model files: every shape is built in code.
 // All sizes are simulation units; the trail lives beside the car root, so the
 // AR anchor's toy scale applies to it too.
 import * as THREE from 'three';
@@ -181,12 +181,75 @@ class PetalStorm {
   dispose(){this.mesh.removeFromParent();this.mesh.geometry.dispose();this.material.dispose();this.mesh.dispose();}
 }
 
+// Small glowing crystals: additive point sprites (a soft glow with a four-point
+// glint) that twinkle, drift and rise a little before fading out.
+const SPARKLE_COLORS=[0xffffff,0xffd6e8,0xffe7a3,0xc9f3ff,0xe6d4ff,0xff9ec7].map(c=>new THREE.Color(c));
+function sparkleTexture() {
+  const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');
+  const glow=g.createRadialGradient(32,32,0,32,32,32);
+  glow.addColorStop(0,'rgba(255,255,255,1)');glow.addColorStop(.18,'rgba(255,255,255,.85)');glow.addColorStop(.45,'rgba(255,255,255,.18)');glow.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=glow;g.fillRect(0,0,64,64);
+  g.fillStyle='rgba(255,255,255,.9)';
+  for(const [w,h] of [[3,60],[60,3]]){g.beginPath();g.ellipse(32,32,w/2,h/2,0,0,Math.PI*2);g.fill();}
+  return new THREE.CanvasTexture(c);
+}
+class Sparkles {
+  constructor(parent,capacity=500) {
+    this.capacity=capacity;this.next=0;this.used=0;this.time=0;
+    const n=capacity,geo=new THREE.BufferGeometry();
+    this.positions=new Float32Array(n*3);this.colors=new Float32Array(n*3);this.sizes=new Float32Array(n);this.alphas=new Float32Array(n);
+    geo.setAttribute('position',new THREE.BufferAttribute(this.positions,3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('aColor',new THREE.BufferAttribute(this.colors,3));
+    geo.setAttribute('aSize',new THREE.BufferAttribute(this.sizes,1));
+    geo.setAttribute('aAlpha',new THREE.BufferAttribute(this.alphas,1).setUsage(THREE.DynamicDrawUsage));
+    geo.setDrawRange(0,0);
+    this.vel=new Float32Array(n*3);this.life=new Float32Array(n);this.age=new Float32Array(n);this.twinkle=new Float32Array(n*2);
+    this.material=new THREE.ShaderMaterial({
+      uniforms:{uMap:{value:sparkleTexture()},uScale:{value:400}},
+      vertexShader:`attribute float aSize;attribute float aAlpha;attribute vec3 aColor;uniform float uScale;varying vec3 vColor;varying float vAlpha;
+        void main(){vec4 mv=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mv;
+        gl_PointSize=clamp(aSize*uScale*projectionMatrix[1][1]/max(.001,-mv.z),3.,110.);vColor=aColor;vAlpha=aAlpha;}`,
+      fragmentShader:`uniform sampler2D uMap;varying vec3 vColor;varying float vAlpha;
+        void main(){float a=texture2D(uMap,gl_PointCoord).a*vAlpha;if(a<.01)discard;gl_FragColor=vec4(vColor*a,a);}`,
+      transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+    });
+    this.points=new THREE.Points(geo,this.material);this.points.name='Sparkles';this.points.frustumCulled=false;this.points.renderOrder=2;
+    // Point size is in simulation units: follow the drawing size and the AR toy scale.
+    const buffer=new THREE.Vector2(),scale=new THREE.Vector3();
+    this.points.onBeforeRender=renderer=>{renderer.getDrawingBufferSize(buffer);this.points.getWorldScale(scale);this.material.uniforms.uScale.value=buffer.y*.5*scale.y;};
+    parent.add(this.points);
+  }
+  emit(x,y,z,vx,vy,vz) {
+    const i=this.next;this.next=(i+1)%this.capacity;this.used=Math.min(this.capacity,this.used+1);
+    const i3=i*3,r=Math.random,c=SPARKLE_COLORS[(r()*SPARKLE_COLORS.length)|0];
+    this.positions.set([x,y,z],i3);this.vel.set([vx,vy,vz],i3);this.colors.set([c.r,c.g,c.b],i3);
+    this.sizes[i]=.34+r()*.42;this.life[i]=1.4+r()*1.8;this.age[i]=0;this.twinkle.set([7+r()*9,r()*6.28],i*2);
+    const g=this.points.geometry;g.attributes.aColor.needsUpdate=true;g.attributes.aSize.needsUpdate=true;g.setDrawRange(0,this.used);
+  }
+  update(dt) {
+    this.time+=dt;const drag=Math.exp(-3.2*dt);
+    for(let i=0;i<this.used;i++){
+      const i3=i*3;this.age[i]+=dt;const t=this.age[i]/this.life[i];
+      if(t>=1){this.alphas[i]=0;continue;}
+      // Light and buoyant: they float up gently instead of falling.
+      this.vel[i3]*=drag;this.vel[i3+2]*=drag;this.vel[i3+1]=this.vel[i3+1]*drag+.55*dt;
+      for(let k=0;k<3;k++)this.positions[i3+k]+=this.vel[i3+k]*dt;
+      const tw=.55+.45*Math.sin(this.time*this.twinkle[i*2]+this.twinkle[i*2+1]);
+      this.alphas[i]=Math.min(1,t*8)*(1-t)*tw*1.8;
+    }
+    const g=this.points.geometry;g.attributes.position.needsUpdate=true;g.attributes.aAlpha.needsUpdate=true;
+  }
+  clear(){this.next=0;this.used=0;this.points.geometry.setDrawRange(0,0);}
+  dispose(){this.points.removeFromParent();this.points.geometry.dispose();this.material.uniforms.uMap.value.dispose();this.material.dispose();}
+}
+
 export class FlowerEffects {
   constructor({visual,ground=()=>0}) {
     this.visual=visual;this.ground=ground;this.enabled=true;this.petalEmit=0;
     this.bed=findBed(visual);
     this.bouquet=this.bed?new BedBouquet(visual.root,this.bed):null;
     this.petals=new PetalStorm(visual.root.parent);
+    this.sparkles=new Sparkles(visual.root.parent);this.sparkleEmit=0;
   }
   get hasBed(){return !!this.bed;}
   // speed: signed forward speed; velocity: chassis velocity in parent space.
@@ -195,7 +258,13 @@ export class FlowerEffects {
       this.petalEmit+=dt*(14+70*Math.min(1,Math.abs(speed)/maxSpeed));
       while(this.petalEmit>=1){this.petalEmit-=1;this.spawnPetal(velocity);}
     }else this.petalEmit=0;
-    this.petals.update(dt);
+    // Crystals: a faint shimmer over the bouquet at rest, a stream with the petals.
+    if(this.enabled&&this.bed){
+      const moving=Math.abs(speed)>.8,pace=Math.min(1,Math.abs(speed)/maxSpeed);
+      this.sparkleEmit+=dt*(moving?10+45*pace:3);
+      while(this.sparkleEmit>=1){this.sparkleEmit-=1;this.spawnSparkle(moving?velocity:null);}
+    }else this.sparkleEmit=0;
+    this.petals.update(dt);this.sparkles.update(dt);
   }
   spawnPetal(velocity) {
     const root=this.visual.root,{min,max,floor}=this.bed,r=Math.random;
@@ -206,6 +275,13 @@ export class FlowerEffects {
     if(velocity)v.addScaledVector(velocity,.85);
     this.petals.emit(p.x,p.y,p.z,v.x,v.y,v.z,this.ground(p.x+v.x*.35,p.z+v.z*.35));
   }
-  clearTrail(){this.petals.clear();this.petalEmit=0;}
-  dispose(){this.bouquet?.dispose();this.petals.dispose();}
+  spawnSparkle(velocity) {
+    const root=this.visual.root,{min,max,floor}=this.bed,r=Math.random;
+    const p=new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.55+r()*.45,min.z+(max.z-min.z)*r()).applyQuaternion(root.quaternion).add(root.position);
+    const v=new THREE.Vector3((r()-.5)*1.6,.3+r()*1.2,(r()-.5)*1.6);
+    if(velocity)v.addScaledVector(new THREE.Vector3(0,0,-1).applyQuaternion(root.quaternion),.4+r()*.6).addScaledVector(velocity,.8);
+    this.sparkles.emit(p.x,p.y,p.z,v.x,v.y,v.z);
+  }
+  clearTrail(){this.petals.clear();this.sparkles.clear();this.petalEmit=0;this.sparkleEmit=0;}
+  dispose(){this.bouquet?.dispose();this.petals.dispose();this.sparkles.dispose();}
 }

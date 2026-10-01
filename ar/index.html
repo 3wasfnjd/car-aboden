@@ -35,16 +35,29 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
 .size output{min-width:96px;text-align:center;font-size:12px;font-weight:bold}
 #placeBtn{width:100%;min-height:54px;border:0;border-radius:14px;background:var(--ink);color:var(--cream);font-weight:bold;font-size:16px}
 #placeBtn:disabled{opacity:.5;cursor:default}
-#hud .bottom-tools{bottom:max(12px,env(safe-area-inset-bottom))}
+/* Minimal driving HUD: wheel, lever, and two small round buttons. */
+.round{pointer-events:auto;width:42px;height:42px;border-radius:50%;border:1px solid #ffffff66;background:#10201ab3;color:#fff;font-size:18px;line-height:1;display:grid;place-items:center;padding:0;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#exitAr{position:absolute;top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left))}
+#menuBtn{position:absolute;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right))}
+#menu{position:absolute;top:calc(max(12px,env(safe-area-inset-top)) + 50px);right:max(12px,env(safe-area-inset-right));pointer-events:auto;display:flex;flex-direction:column;gap:6px;background:#10201ad9;border-radius:16px;padding:8px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#menu button{border:0;border-radius:11px;background:#ffffff14;color:#fff;font-size:13px;padding:11px 14px;text-align:right;min-width:150px}
+#menu button[aria-pressed=false]{opacity:.5}
+#arStatus{top:max(16px,env(safe-area-inset-top))}
+#hud .steering-wrap{opacity:.88}#hud .steering-wrap small,#hud .lever-label{display:none}
+#hud .right-controls{width:auto}#hud .pedals{justify-content:flex-end}
+#hud .throttle-lever{background:#f7f6eab8}#hud .lever-track{top:14px;bottom:14px}
 </style>
 </head>
 <body>
 <canvas id="camerafeed"></canvas>
 <main id="hud">
-  <header class="topbar">
-    <div class="brand">موتري<span>.</span><small>قيادة بالواقع المعزز</small></div>
-    <nav class="nav"><button id="exitAr" aria-label="الرجوع للعبة">خروج</button></nav>
-  </header>
+  <button id="exitAr" class="round" aria-label="خروج من الواقع المعزز">×</button>
+  <button id="menuBtn" class="round" aria-label="خيارات" aria-expanded="false" hidden>⋯</button>
+  <div id="menu" hidden>
+    <button id="reset">↻ إعادة السيارة</button>
+    <button id="move">⌖ نقل السيارة</button>
+    <button id="flowersBtn" aria-pressed="true">🌹 الورود والبلورات</button>
+  </div>
   <div id="arStatus" role="status"><span class="status-dot"></span><span id="statusText">تشغيل الكاميرا…</span></div>
   <section id="placement">
     <div class="size" aria-label="حجم السيارة"><button id="sizeDown" aria-label="تصغير">−</button><output id="sizeValue">35 سم</output><button id="sizeUp" aria-label="تكبير">+</button></div>
@@ -62,12 +75,11 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
           <circle class="wheel-bolt" cx="80" cy="80" r="5"/>
         </svg>
       </div>
-      <small>اسحب المقود يمينًا / يسارًا</small>
     </div>
     <div class="right-controls">
-      <button id="precision" aria-pressed="false">قيادة دقيقة</button>
+      <button id="precision" aria-pressed="false" hidden>قيادة دقيقة</button>
       <div class="pedals">
-        <button id="brake" class="pedal brake" aria-pressed="false" aria-label="الفرامل"><span class="pedal-tread" aria-hidden="true"></span><b>فرامل</b></button>
+        <button id="brake" class="pedal brake" aria-pressed="false" aria-label="الفرامل" hidden><span class="pedal-tread" aria-hidden="true"></span><b>فرامل</b></button>
         <div id="accelerator" class="throttle-lever" role="slider" tabindex="0" aria-label="البنزين والقير: اسحب لأعلى للتقدم ولأسفل للرجوع" aria-orientation="vertical" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-valuetext="محايد" data-drive="N">
           <span class="lever-label forward" aria-hidden="true">↑ قدّام</span>
           <span class="lever-track" aria-hidden="true"></span>
@@ -76,7 +88,6 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
         </div>
       </div>
     </div>
-    <div class="bottom-tools"><button id="reset" aria-label="إعادة السيارة لمكانها">↻ <span>إعادة السيارة</span></button><button id="move" aria-label="نقل السيارة لمكان آخر">⌖ <span>نقل السيارة</span></button><button id="flowersBtn" aria-pressed="true" aria-label="نثر الورود أثناء القيادة">🌹 <span>نثر الورود</span></button></div>
   </div>
 </main>
 <section id="arIntro">
@@ -95,7 +106,7 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
 <script type="module">
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { CONFIG, fixedSteps } from '../src/core.js';
+import { CONFIG, fixedSteps, damp } from '../src/core.js';
 import { MotriVehicle } from '../src/vehicle.js';
 import { CarVisual } from '../src/visuals.js';
 import { InputController } from '../src/input.js';
@@ -142,7 +153,19 @@ const ray=new THREE.Raycaster(),centre=new THREE.Vector2(0,0),ground=new THREE.P
 const hit=new THREE.Vector3(),preview=new THREE.Vector3(),lastHit=new THREE.Vector3(1e3,1e3,1e3),tmp=new THREE.Vector3();
 
 const notify=text=>{$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2200);};
-const setStatus=(text,ready=false)=>{$('statusText').textContent=text;$('arStatus').classList.toggle('ready',ready);};
+const setStatus=(text,ready=false)=>{$('statusText').textContent=text;$('arStatus').classList.toggle('ready',ready);$('arStatus').hidden=false;};
+const hideStatus=()=>{$('arStatus').hidden=true;};
+const showMenu=open=>{$('menu').hidden=!open;$('menuBtn').setAttribute('aria-expanded',String(open));};
+
+// Smooth steering for AR: an expo curve gives fine control near the centre,
+// then the wheel angle eases toward the finger instead of snapping.
+let steerSmooth=0;
+function smoothInput(raw,dt){
+  const curved=Math.sign(raw.steer)*Math.pow(Math.abs(raw.steer),1.7);
+  steerSmooth=damp(steerSmooth,curved,curved===0?8:5.5,dt);
+  if(Math.abs(steerSmooth)<.002)steerSmooth=0;
+  return {...raw,steer:steerSmooth};
+}
 const fail=message=>{failed=true;sceneReady=false;$('arIntro').hidden=false;$('arError').style.display='block';$('arError').textContent=message;$('startBtn').disabled=false;$('startBtn').textContent='إعادة تحميل الصفحة';};
 const scale=()=>SIZES[sizeIndex]/carLength;
 function showSize(){$('sizeValue').textContent=`${Math.round(SIZES[sizeIndex]*100)} سم`;if(anchor)anchor.scale.setScalar(scale());}
@@ -171,7 +194,9 @@ async function setupScene(){
   reticle=new THREE.Mesh(new THREE.RingGeometry(.05,.065,40).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.9,depthWrite:false}));
   reticle.visible=false;scene.add(reticle);
   buildPhysics();
-  car=new MotriVehicle(world);car.params.maxSpeed=AR_MAX_SPEED;car.params.reverseSpeed=AR_MAX_SPEED*.6;car.checkpoint=[...SPAWN];car.reset();
+  car=new MotriVehicle(world);car.params.maxSpeed=AR_MAX_SPEED;car.params.reverseSpeed=AR_MAX_SPEED*.6;
+  // Gentler wheel response and yaw assist so turns build up smoothly.
+  Object.assign(car.params,{steerRate:7,steerReturnRate:9,yawAssist:3.2,maxSteer:.58});car.checkpoint=[...SPAWN];car.reset();
   visual=new CarVisual(anchor);
   input=new InputController(resetCar,()=>{});input.setEnabled(false);
   $('precision').addEventListener('click',()=>{input.precision=!input.precision;$('precision').setAttribute('aria-pressed',String(input.precision));$('precision').textContent=input.precision?'قيادة دقيقة: مفعّلة':'قيادة دقيقة';});
@@ -188,17 +213,17 @@ async function setupScene(){
   $('arIntro').hidden=true;setStatus('وجّه الجوال للأرض وحرّكه ببطء');
 }
 
-function resetCar(){input?.reset();car.reset();accumulator=0;visual.sync(car);}
+function resetCar(){input?.reset();car.reset();accumulator=0;steerSmooth=0;visual.sync(car);}
 
 function place(){
   if(!reticle.visible||$('placeBtn').disabled){notify('وجّه الكاميرا للأرض أولًا');return;}
   placed=true;reticle.visible=false;resetCar();
-  $('placement').hidden=true;$('driveControls').hidden=false;input.setEnabled(true);
-  setStatus('سُق السيارة',true);
+  $('placement').hidden=true;$('driveControls').hidden=false;$('menuBtn').hidden=false;input.setEnabled(true);steerSmooth=0;
+  hideStatus();
 }
 function move(){
   placed=false;input.setEnabled(false);resetCar();flowers?.clearTrail();
-  $('driveControls').hidden=true;$('placement').hidden=false;stableSince=null;
+  $('driveControls').hidden=true;$('menuBtn').hidden=true;showMenu(false);$('placement').hidden=false;stableSince=null;
   setStatus('وجّه الجوال للمكان الجديد');
 }
 
@@ -225,13 +250,13 @@ function tick(now){
   const dt=Math.min(.08,Math.max(0,(now-lastTick)/1000));lastTick=now;
   if(!placed){updatePreview(now);}
   else if(trackingReady(now)&&!document.hidden){
-    car.input=input.read();
+    car.input=smoothInput(input.read(),dt);
     const steps=fixedSteps(accumulator,dt);accumulator=steps.accumulator;
     for(let i=0;i<steps.count;i++){car.beforeStep(CONFIG.step);world.step(CONFIG.step);car.afterStep(CONFIG.step);}
     const p=car.body.position,up=new THREE.Vector3(0,1,0).applyQuaternion(visual.root.quaternion);
     if(p.y< -5||Math.hypot(p.x,p.z)>MAX_DISTANCE||(up.y<.12&&Math.abs(car.speed)<.2&&(car.upsideTime=(car.upsideTime||0)+dt)>3)){car.upsideTime=0;resetCar();notify('رجعت السيارة لمكانها');}
     else if(up.y>=.12)car.upsideTime=0;
-    if($('arStatus').classList.contains('ready')===false)setStatus('سُق السيارة',true);
+    if(!$('arStatus').hidden)hideStatus();
   }else if(placed){accumulator=0;setStatus('التتبع ضعيف — وجّه الجوال للأرض ببطء');}
   visual.sync(car);
   if(placed)flowers?.update(dt,{speed:car.speed,maxSpeed:car.params.maxSpeed,velocity:car.body.velocity});
@@ -271,9 +296,10 @@ $('startBtn').addEventListener('click',()=>{
   try{XR8.run({canvas:$('camerafeed')});syncViewport();setTimeout(syncViewport,120);setTimeout(syncViewport,500);setTimeout(syncViewport,1200);}catch(e){console.error(e);fail('تعذر تشغيل الكاميرا: '+(e.message||e));}
 });
 $('placeBtn').addEventListener('click',place);
-$('move').addEventListener('click',move);
-$('flowersBtn').addEventListener('click',()=>{if(!flowers)return;flowers.enabled=!flowers.enabled;$('flowersBtn').setAttribute('aria-pressed',String(flowers.enabled));notify(flowers.enabled?'نثر الورود يعمل':'توقف نثر الورود');});
-$('reset').addEventListener('click',()=>{resetCar();notify('رجعت السيارة لمكانها');});
+$('move').addEventListener('click',()=>{showMenu(false);move();});
+$('menuBtn').addEventListener('click',()=>showMenu($('menu').hidden));
+$('flowersBtn').addEventListener('click',()=>{showMenu(false);if(!flowers)return;flowers.enabled=!flowers.enabled;$('flowersBtn').setAttribute('aria-pressed',String(flowers.enabled));notify(flowers.enabled?'الورود والبلورات تعمل':'توقف نثر الورود والبلورات');});
+$('reset').addEventListener('click',()=>{showMenu(false);resetCar();notify('رجعت السيارة لمكانها');});
 $('sizeDown').addEventListener('click',()=>{sizeIndex=Math.max(0,sizeIndex-1);showSize();});
 $('sizeUp').addEventListener('click',()=>{sizeIndex=Math.min(SIZES.length-1,sizeIndex+1);showSize();});
 $('exitAr').addEventListener('click',()=>{try{XR8.stop();}catch{}location.href='../';});
