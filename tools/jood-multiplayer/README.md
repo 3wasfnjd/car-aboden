@@ -16,8 +16,8 @@ Messages (JSON):
 
 Join notifications for the owner (name, room, player count; at most once per name per 10 minutes), set as repository secrets and copied to the Worker by the deploy workflow:
 
-- **Telegram** (recommended): `TELEGRAM_BOT_TOKEN` from @BotFather. Send the bot any message before deploying and the workflow finds your chat id (or set `TELEGRAM_CHAT_ID`).
-- **ntfy**: `NTFY_TOPIC` (+ `NTFY_TOKEN`). ntfy.sh limits anonymous and free accounts by IP, and Workers share IPs, so it is often refused (429).
+- **Telegram**: `TELEGRAM_BOT_TOKEN` from @BotFather. Send the bot any message before deploying and the workflow finds your chat id (or set `TELEGRAM_CHAT_ID`).
+- **ntfy**: `NTFY_TOPIC`. ntfy.sh refuses publishes from Workers' shared IPs (429), so the relay sends the ready message to the joining phone, which posts it to ntfy.sh silently (no UI).
 
 ## Deploy
 

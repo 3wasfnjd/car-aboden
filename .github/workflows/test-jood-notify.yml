@@ -32,7 +32,7 @@ jobs:
             const WebSocket=require("ws");
             const ws=new WebSocket("wss://jood-multiplayer.3wasf-njd1.workers.dev/room/JOODTEST?name="+encodeURIComponent("اختبار "+Date.now()%1000)+"&car=van",{origin:"https://3wasfnjd.github.io"});
             ws.on("open",()=>console.log("socket open"));
-            ws.on("message",m=>console.log("got",String(m).slice(0,200)));
+            ws.on("message",async m=>{const j=JSON.parse(m);console.log("got",j.t);if(j.t==="n"){const r=await fetch(j.u,{method:"POST",body:JSON.stringify(j.b)});console.log("relayed",r.status);}});
             ws.on("unexpected-response",(q,r)=>console.log("refused",r.statusCode));
             ws.on("error",e=>console.log("error",e.message));
             setTimeout(()=>{ws.close();process.exit(0)},4000);'

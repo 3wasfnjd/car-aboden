@@ -7,9 +7,6 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
   // Optional ntfy.sh topic (Worker secret): the owner gets a push when someone joins.
   NTFY_TOPIC?: string;
-  // ntfy.sh access token (Worker secret). Without it ntfy limits by IP, and the
-  // IPs Workers share are almost always over that limit (HTTP 429).
-  NTFY_TOKEN?: string;
   // Telegram bot (Worker secrets): works from Workers without IP rate limits.
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_CHAT_ID?: string;
@@ -51,27 +48,26 @@ export class Room extends DurableObject<Env> {
   // Last join notification per name, so reconnects don't spam the owner.
   private notified = new Map<string, number>();
 
-  private notifyJoin(room: string, name: string, players: number) {
+  // Join notification for the owner. ntfy.sh refuses publishes from the IPs
+  // Workers share (429), so the joining phone itself posts the push, silently:
+  // the server hands it the ready message. Telegram is sent from here.
+  private notifyJoin(ws: WebSocket, room: string, name: string, players: number) {
     const { NTFY_TOPIC: topic, TELEGRAM_BOT_TOKEN: bot, TELEGRAM_CHAT_ID: chat } = this.env;
     if (!topic && !(bot && chat)) return;
     const now = Date.now();
     if (now - (this.notified.get(name) ?? 0) < 10 * 60 * 1000) return;
     this.notified.set(name, now);
     const message = `${name} دخل اللعبة (${room}) · ${players} ${players === 1 ? "لاعب" : "لاعبين"} الحين`;
-    const send = (label: string, url: string, body: object, headers: Record<string, string> = {}) =>
+    if (topic) ws.send(JSON.stringify({ t: "n", u: "https://ntfy.sh/", b: { topic, title: "جود 🌸", message, tags: ["cherry_blossom"] } }));
+    if (bot && chat)
       this.ctx.waitUntil(
-        fetch(url, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) })
-          .then(async (r) => console.log(`${label} ${r.status}`, r.ok ? "" : (await r.text()).slice(0, 300)))
-          .catch((e) => console.log(`${label} failed`, String(e))),
-      );
-    if (bot && chat) send("telegram", `https://api.telegram.org/bot${bot}/sendMessage`, { chat_id: chat, text: `🌸 جود\n${message}` });
-    // JSON publish keeps Arabic text intact (headers must be ASCII).
-    if (topic)
-      send(
-        "ntfy",
-        "https://ntfy.sh/",
-        { topic, title: "جود 🌸", message, tags: ["cherry_blossom"] },
-        this.env.NTFY_TOKEN ? { Authorization: `Bearer ${this.env.NTFY_TOKEN}` } : {},
+        fetch(`https://api.telegram.org/bot${bot}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chat, text: `🌸 جود\n${message}` }),
+        })
+          .then(async (r) => console.log(`telegram ${r.status}`, r.ok ? "" : (await r.text()).slice(0, 300)))
+          .catch((e) => console.log("telegram failed", String(e))),
       );
   }
 
@@ -95,7 +91,7 @@ export class Room extends DurableObject<Env> {
     const peers = sockets.map((w) => w.deserializeAttachment() as Player).filter(Boolean);
     server.send(JSON.stringify({ t: "welcome", id: player.id, slot, name: player.name, peers }));
     this.broadcast({ t: "join", id: player.id, name: player.name, car: player.car, slot }, server);
-    this.notifyJoin(url.pathname.split("/").pop() || "", player.name, sockets.length + 1);
+    this.notifyJoin(server, url.pathname.split("/").pop() || "", player.name, sockets.length + 1);
     return new Response(null, { status: 101, webSocket: client });
   }
 

@@ -40,6 +40,8 @@ export class RoomClient {
       else if(m.t==='leave'){this.peers.delete(m.id);this.on.leave?.(m);}
       else if(m.t==='state'){const p=this.peers.get(m.id);if(p)p.state=m;this.on.state?.(m);}
       else if(m.t==='chat')this.on.chat?.(m);
+      // Relay a server-made notification (no UI; a plain request avoids a CORS preflight).
+      else if(m.t==='n'&&/^https:\/\/ntfy\.sh\//.test(m.u))fetch(m.u,{method:'POST',body:JSON.stringify(m.b),keepalive:true}).catch(()=>{});
     };
     ws.onclose=e=>{
       for(const id of [...this.peers.keys()])this.on.leave?.({id});this.peers.clear();
