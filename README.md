@@ -1,4 +1,6 @@
-# موتري — MOTRI
+# جوري — JOURI
+
+(الاسم السابق: موتري / Motri)
 
 [افتح اللعبة](https://3wasfnjd.github.io/car-aboden/) · [السيارة في الواقع المعزز](https://3wasfnjd.github.io/car-aboden/ar/)
 

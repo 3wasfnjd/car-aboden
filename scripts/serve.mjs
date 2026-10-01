@@ -5,4 +5,4 @@ http.createServer(async(req,res)=>{
  try{let p=decodeURIComponent(new URL(req.url,'http://localhost').pathname);let file=path.resolve(root,'.'+p);if(!file.startsWith(root+path.sep)&&file!==root){res.writeHead(403).end();return;}
  if((await stat(file)).isDirectory())file=path.join(file,'index.html');const bytes=await readFile(file);res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(bytes);
  }catch{res.writeHead(404).end('Not found');}
-}).listen(port,'0.0.0.0',()=>console.log(`Motri: http://localhost:${port}`));
+}).listen(port,'0.0.0.0',()=>console.log(`Jouri: http://localhost:${port}`));

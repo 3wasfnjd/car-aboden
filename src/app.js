@@ -24,7 +24,7 @@ export async function boot() {
   const stored=readStore();car.checkpoint=safeSpawn(stored);car.reset();
   const notify=text=>{$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2600);};
   function resetCar(){input.reset();car.reset();accumulator=0;cameraTarget.copy(car.body.position);notify('عادت السيارة إلى نقطة البداية');}
-  function showMenu(){running=false;paused=true;input.setEnabled(false);$('intro').hidden=false;$('hud').hidden=true;$('settings').hidden=true;$('start').textContent='متابعة القيادة';}
+  function showMenu(){running=false;paused=true;input.setEnabled(false);$('intro').hidden=false;$('hud').hidden=true;$('settings').hidden=true;$('start').textContent='نكمل المشوار 🌸';}
   const input=new InputController(resetCar,()=>running?showMenu():start());input.setEnabled(false);
   let modelStatus={loaded:false};
   // Finish model/rig installation before accepting driving input. Failed model
@@ -40,8 +40,8 @@ export async function boot() {
   // Pink paint, painted roses and a procedural bouquet in the bed.
   try{modelStatus.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual,ground:groundAt});}catch(e){console.warn(e);}
   function start(){if(dead)return;running=true;paused=false;everStarted=true;input.setEnabled(true);last=performance.now();accumulator=0;$('intro').hidden=true;$('hud').hidden=false;}
-  $('start').disabled=false;$('start').textContent='ابدأ القيادة';
-  $('loadState').textContent=modelStatus.loaded?'GMC جاهزة • أربع عجلات متحركة':modelStatus.error?'تعذر تحميل GMC؛ السيارة المؤقتة متاحة: '+modelStatus.error:'جاهزة للتجربة • بدون كاميرا';
+  $('start').disabled=false;$('start').textContent='يلّا ننطلق 🌸';
+  $('loadState').textContent=modelStatus.loaded?'جوري جاهزة • الورد بالحوض 🌹':modelStatus.error?'تعذر تحميل GMC؛ السيارة المؤقتة متاحة: '+modelStatus.error:'جاهزة للتجربة • بدون كاميرا';
   $('speedLimit').max='20';$('speedLimit').value=String(CONFIG.maxSpeed);$('speedValue').textContent=CONFIG.maxSpeed.toFixed(1);
   $('start').addEventListener('click',start);$('pause').addEventListener('click',showMenu);$('reset').addEventListener('click',resetCar);
   $('precision').addEventListener('click',()=>{input.precision=!input.precision;$('precision').setAttribute('aria-pressed',String(input.precision));$('precision').textContent=input.precision?'قيادة دقيقة: مفعّلة':'قيادة دقيقة';notify(input.precision?'سرعة منخفضة للتحكم قرب العقبات':'القيادة العادية');});

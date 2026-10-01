@@ -24,3 +24,33 @@ h1{font-size:clamp(60px,13vw,85px);line-height:1.2;margin:22px 0 12px;letter-spa
 @media(max-width:370px){.steering-wrap{left:12px;width:126px}.right-controls{right:12px;width:138px}.pedals{gap:10px}.pedal.brake{width:58px}.throttle-lever{width:70px}.mission{font-size:10px}.speedbox{padding:5px 8px}.speedbox b{font-size:22px}}
 @media(max-height:500px){.steering-wrap{width:132px;bottom:max(22px,env(safe-area-inset-bottom))}.steering-wrap small{display:none}.right-controls{bottom:max(22px,env(safe-area-inset-bottom));gap:8px}.pedal.brake{height:76px}.throttle-lever{height:132px}.speedbox{bottom:58px}.mission{max-width:42%}.bottom-tools{gap:6px}.bottom-tools span{font-size:8px}}
 #flowersBtn[aria-pressed=false]{opacity:.55}
+
+/* ---- Jouri teaser home: pink, rounded, with falling petals ---- */
+.intro{--p50:#fff5f9;--p100:#ffe3ee;--p300:#ff9fc6;--p500:#f25c9c;--p600:#d93d82;--p700:#a8245f;--cute:'Baloo Bhaijaan 2',Tahoma,Arial,sans-serif;
+  background:radial-gradient(120% 90% at 85% 0%,#ffd6e8f0,#fff0f6d9 55%,#ffe3eec0)}
+.intro-card{position:relative;z-index:1;background:#fffafcf5;border:3px solid #fff;border-radius:30px;box-shadow:0 24px 70px #a8245f33}
+.intro .eyebrow{color:var(--p700)}.intro .eyebrow span{border-color:#ffc6dc;background:#fff0f6;color:var(--p700)}
+.intro h1{font-family:var(--cute);letter-spacing:0;color:var(--p700)}
+.intro .shine{background:linear-gradient(100deg,var(--p700) 0 35%,#ff7cb1 45%,#fff 50%,#ff7cb1 55%,var(--p700) 65%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 3.6s ease-in-out infinite}
+@keyframes shine{0%{background-position:120% 0}60%,100%{background-position:-30% 0}}
+.intro .brand-dot{color:var(--p500)}
+.intro .tagline{font-family:var(--cute);font-weight:800;color:var(--p700);line-height:1.6}.intro .tagline strong{color:#b06a8a;font-weight:600}
+.intro .intro-text{color:#8a5a70}
+.intro .intro-chips span{background:#fff0f6;border:1px solid #ffd6e6;color:var(--p700);font-size:10px;border-radius:999px;padding:7px 11px}
+.intro .start{font-family:var(--cute);font-size:19px;border-radius:999px;border:3px solid #fff;color:#fff;
+  background:linear-gradient(180deg,#ffffff73 0,#ffffff1a 48%,#fff0 50%),linear-gradient(180deg,var(--p300),var(--p500));
+  box-shadow:0 6px 0 var(--p600),0 12px 24px #a8245f55;text-shadow:0 1px 2px #a8245f99}
+.intro .start:not(:disabled){animation:nudge 2.8s ease-in-out infinite}
+.intro .start:active{transform:translateY(5px);box-shadow:0 1px 0 var(--p600)}
+@keyframes nudge{0%,80%,100%{transform:none}86%{transform:translateY(-3px) rotate(-1deg)}92%{transform:translateY(-1px) rotate(1deg)}}
+.intro .load-state{color:#b06a8a}
+.intro .ar-link{font-family:var(--cute);font-weight:800;font-size:15px;color:var(--p700);background:linear-gradient(180deg,#fff,var(--p100));border:2px solid #fff;border-radius:999px;box-shadow:0 4px 0 #ffc6dc,0 8px 18px #a8245f22}
+.intro .ar-link small{font-size:10px;background:var(--p500);color:#fff;border-radius:6px;padding:2px 6px;margin-inline-start:4px}
+.intro .intro-footer{border-top-color:#ffd6e6;color:#b06a8a}
+.petal-rain{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.petal-rain i{position:absolute;top:-6%;left:var(--x);width:calc(14px*var(--s));height:calc(18px*var(--s));border-radius:70% 0 70% 0;
+  background:linear-gradient(135deg,#ff9fc6,#e2245a);opacity:.75;animation:petal-fall var(--d) linear var(--w) infinite}
+.petal-rain i:nth-child(3n){background:linear-gradient(135deg,#ffe3ee,#ff7cb1)}.petal-rain i:nth-child(4n){background:linear-gradient(135deg,#ff6b8b,#a0001c)}
+@keyframes petal-fall{0%{transform:translate(0,0) rotate(0)}25%{transform:translate(18px,28vh) rotate(90deg)}50%{transform:translate(-14px,56vh) rotate(200deg)}75%{transform:translate(16px,84vh) rotate(290deg)}100%{transform:translate(-6px,112vh) rotate(380deg)}}
+@media(prefers-reduced-motion:reduce){.petal-rain{display:none}.intro .shine,.intro .start{animation:none}}
+.brand{font-family:'Baloo Bhaijaan 2',Tahoma,sans-serif}.brand span{color:#f25c9c}
