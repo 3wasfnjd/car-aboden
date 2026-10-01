@@ -61,6 +61,12 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
 .steer-buttons{position:absolute;left:max(18px,env(safe-area-inset-left));bottom:calc(max(14px,env(safe-area-inset-bottom)) + 40px);display:flex;gap:14px;direction:ltr;pointer-events:auto}
 .steer-buttons .drive-btn{width:80px;height:80px}.steer-buttons .drive-btn b{font-size:30px}
 .steer-buttons .drive-btn.active{background:#2f6fb0;border-color:#dbeeff;transform:scale(.94)}
+/* Small autopilot button above the steering buttons. */
+#autoBtn.candy{position:absolute;left:max(18px,env(safe-area-inset-left));bottom:calc(max(14px,env(safe-area-inset-bottom)) + 140px);width:62px;height:62px;pointer-events:auto}
+#autoBtn.candy small{font-size:10px;margin-top:-3px}#autoBtn.candy::after{display:none}
+#autoBtn.candy[aria-pressed=true]{background:radial-gradient(90% 55% at 50% 8%,#ffffff99 0 38%,#fff0 40%),linear-gradient(180deg,#c9a7ff,#9b6bf2);box-shadow:0 5px 0 #7445c9,0 0 0 6px #b28cff44}
+#autoBtn.candy[aria-pressed=true] svg{animation:spin 2.4s linear infinite}
+@media(max-height:500px){#autoBtn.candy{bottom:calc(max(14px,env(safe-area-inset-bottom)) + 130px)}}
 @keyframes cruise{50%{box-shadow:0 0 0 10px #2a9d7820,0 0 30px #5ef2c050}}
 
 /* ---- Candy theme: pink jelly buttons that match the rose car ---- */
@@ -131,6 +137,7 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
     <button id="placeBtn" class="candy" disabled>🌸 ثبّت السيارة هنا</button>
   </section>
   <div class="drive-controls" id="driveControls" hidden>
+    <button id="autoBtn" class="drive-btn candy" aria-pressed="false" aria-label="قيادة آلية: دائرة ثم قلب ثم إيقاف"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 7.5A7 7 0 1 0 19 12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M19.5 4.5v4h-4" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><small id="autoLabel">آلي</small></button>
     <div class="steer-buttons">
       <button id="leftBtn" class="drive-btn candy" aria-label="يسار: اضغط باستمرار"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5l-7 7 7 7" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button id="rightBtn" class="drive-btn candy" aria-label="يمين: اضغط باستمرار"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5l7 7-7 7" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -189,6 +196,7 @@ import { CarVisual } from '../src/visuals.js';
 import { InputController } from '../src/input.js';
 import { loadVehicleModel } from '../src/models.js';
 import { VEHICLES, vehicleChoice, mountVehiclePicker } from '../src/choice.js';
+import { Autopilot } from '../src/autopilot.js';
 import { FlowerEffects } from '../src/flowers.js';
 import { applyRosePaint } from '../src/paint.js';
 import { addCuteDecor, addVanLabels } from '../src/decor.js';
@@ -308,8 +316,60 @@ async function setupScene(){
 let cruise=false,reversing=false;
 function setCruise(on){cruise=on;$('fwdBtn').setAttribute('aria-pressed',String(on));}
 const steerHeld={left:false,right:false};
+// Autopilot: ⭕ circle → 💗 heart → off. The path sits on the floor about a
+// metre in front of the phone (never tighter than the car can turn) and slowly
+// follows the phone; dotted pink marks show it. Any drive button cancels it.
+const autopilot=new Autopilot(),AUTO_MODES=[null,'circle','heart'],AUTO_LABEL={circle:'⭕ دائرة',heart:'💗 قلب'};
+let autoMode=0,pathDots=null;
+const camPos=new THREE.Vector3(),camDir=new THREE.Vector3(),apA=new THREE.Vector3(),apB=new THREE.Vector3(),dotM=new THREE.Matrix4();
+let autoOffset=new THREE.Vector3();
+// Path centre in world space: where the phone points on the floor when the mode
+// starts, then kept at that offset from the phone (it follows when you walk,
+// not when you only turn the phone to watch the car).
+function autoFrame(start){
+  camera.getWorldPosition(camPos);
+  if(start){
+    camera.getWorldDirection(camDir);const t=camDir.y<-.12?-camPos.y/camDir.y:Infinity;
+    apA.copy(camPos).addScaledVector(camDir,t);apA.y=0;
+    const flat=new THREE.Vector3(camDir.x,0,camDir.z);if(flat.lengthSq()<1e-6)flat.set(0,0,-1);flat.normalize();
+    const reach=Math.hypot(apA.x-camPos.x,apA.z-camPos.z);
+    if(!(reach>.4&&reach<3))apA.set(camPos.x+flat.x*1.2,0,camPos.z+flat.z*1.2);
+    autoOffset.set(apA.x-camPos.x,0,apA.z-camPos.z);
+  }
+  apA.set(camPos.x+autoOffset.x,0,camPos.z+autoOffset.z);
+  anchor.updateMatrixWorld(true);const c=anchor.worldToLocal(apA.clone());
+  // Viewer axes: "forward" points from the phone to the path centre.
+  apB.copy(apA).add(autoOffset.clone().normalize());const f=anchor.worldToLocal(apB.clone()).sub(c);f.y=0;f.normalize();
+  return {center:{x:c.x,z:c.z},forward:{x:f.x,z:f.z},right:{x:-f.z,z:f.x}};
+}
+function showPath(on){
+  if(!pathDots){pathDots=new THREE.InstancedMesh(new THREE.CircleGeometry(.16,14).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xff7cb1,transparent:true,opacity:.65,depthWrite:false}),72);anchor.add(pathDots);}
+  pathDots.visible=on;if(!on)return;
+  const pts=autopilot.points,step=pts.length/pathDots.count;
+  for(let i=0;i<pathDots.count;i++){const p=pts[Math.floor(i*step)];dotM.makeTranslation(p.x,.03,p.z);pathDots.setMatrixAt(i,dotM);}
+  pathDots.instanceMatrix.needsUpdate=true;
+}
+function setAuto(mode){
+  autoMode=mode;const shape=AUTO_MODES[mode];
+  $('autoBtn').setAttribute('aria-pressed',String(!!shape));$('autoLabel').textContent=shape?AUTO_LABEL[shape]:'آلي';
+  if(!shape){autopilot.stop();showPath(false);return;}
+  setCruise(false);reversing=false;steerHeld.left=steerHeld.right=false;
+  const s=scale(),wheelbase=car.params.wheelZ*2,turn=wheelbase/Math.tan(car.params.maxSteer);
+  const size=Math.max((shape==='circle'?.45:.6)/s,turn*(shape==='circle'?1.35:1.8)),frame=autoFrame(true);
+  car.body.quaternion.vmult(new CANNON.Vec3(0,0,1),fwdVec);
+  autopilot.start(shape,{...frame,size,heading:{x:fwdVec.x,z:fwdVec.z}});showPath(true);
+  notify(shape==='circle'?'تدور في دائرة قدّامك ⭕':'ترسم قلب قدّامك 💗');
+}
+const fwdVec=new CANNON.Vec3();
+function autoInput(dt){
+  // Let the path drift toward the spot in front of the phone.
+  const frame=autoFrame(false),k=1-Math.exp(-.6*dt);
+  autopilot.setCenter({x:autopilot.center.x+(frame.center.x-autopilot.center.x)*k,z:autopilot.center.z+(frame.center.z-autopilot.center.z)*k});showPath(true);
+  car.body.quaternion.vmult(new CANNON.Vec3(0,0,1),fwdVec);
+  return autopilot.update(car.body.position,fwdVec,{lookahead:Math.max(4,autopilot.size*.45)});
+}
 function driveInput(raw){return {...raw,steer:Number(steerHeld.right)-Number(steerHeld.left),throttle:reversing?-1:cruise?1:0,brake:false};}
-function stopDrive(){setCruise(false);reversing=false;steerHeld.left=steerHeld.right=false;for(const id of ['revBtn','leftBtn','rightBtn'])$(id).classList.remove('active');}
+function stopDrive(){if(autoMode)setAuto(0);setCruise(false);reversing=false;steerHeld.left=steerHeld.right=false;for(const id of ['revBtn','leftBtn','rightBtn'])$(id).classList.remove('active');}
 function resetCar(){input?.reset();stopDrive();car.reset();accumulator=0;steerSmooth=0;visual.sync(car);}
 
 function place(){
@@ -347,7 +407,8 @@ function tick(now){
   const dt=Math.min(.08,Math.max(0,(now-lastTick)/1000));lastTick=now;
   if(!placed){updatePreview(now);}
   else if(trackingReady(now)&&!document.hidden){
-    car.input=smoothInput(driveInput(input.read()),dt);
+    // The autopilot steers directly (the vehicle still eases the wheel angle).
+    car.input=autopilot.active?autoInput(dt):smoothInput(driveInput(input.read()),dt);
     const steps=fixedSteps(accumulator,dt);accumulator=steps.accumulator;
     for(let i=0;i<steps.count;i++){car.beforeStep(CONFIG.step);world.step(CONFIG.step);car.afterStep(CONFIG.step);}
     const p=car.body.position,up=new THREE.Vector3(0,1,0).applyQuaternion(visual.root.quaternion);
@@ -400,18 +461,19 @@ $('reset').addEventListener('click',()=>{showMenu(false);resetCar();notify('رج
 for(const [id,step] of [['sizeDown',-1],['sizeUp',1],['sizeDown2',-1],['sizeUp2',1]])$(id).addEventListener('click',()=>resize(step));
 $('exitAr').addEventListener('click',()=>{try{XR8.stop();}catch{}location.href='../';});
 document.addEventListener('visibilitychange',()=>{trackingNormalSince=null;lastTick=performance.now();input?.reset();stopDrive();});
-$('fwdBtn').addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;setCruise(!cruise);if(cruise){reversing=false;$('revBtn').classList.remove('active');}});
+$('fwdBtn').addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;if(autoMode)setAuto(0);setCruise(!cruise);if(cruise){reversing=false;$('revBtn').classList.remove('active');}});
 {
   const rev=$('revBtn'),release=e=>{if(rev.hasPointerCapture?.(e.pointerId))rev.releasePointerCapture(e.pointerId);reversing=false;rev.classList.remove('active');};
-  rev.addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;rev.setPointerCapture(e.pointerId);reversing=true;setCruise(false);rev.classList.add('active');});
+  rev.addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;if(autoMode)setAuto(0);rev.setPointerCapture(e.pointerId);reversing=true;setCruise(false);rev.classList.add('active');});
   ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>rev.addEventListener(ev,release));
 }
 for(const [id,side] of [['leftBtn','left'],['rightBtn','right']]){
   const b=$(id),release=e=>{if(b.hasPointerCapture?.(e.pointerId))b.releasePointerCapture(e.pointerId);steerHeld[side]=false;b.classList.remove('active');};
-  b.addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;b.setPointerCapture(e.pointerId);steerHeld[side]=true;b.classList.add('active');});
+  b.addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;if(autoMode)setAuto(0);b.setPointerCapture(e.pointerId);steerHeld[side]=true;b.classList.add('active');});
   ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,release));
 }
 window.addEventListener('blur',stopDrive);
+$('autoBtn').addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;setAuto((autoMode+1)%AUTO_MODES.length);});
 $('driveControls').hidden=true;
 mountVehiclePicker($('carPickAr'));
 if(window.XR8)initXR();else window.addEventListener('xrloaded',initXR,{once:true});
