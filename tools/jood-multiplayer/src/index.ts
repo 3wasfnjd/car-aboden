@@ -13,6 +13,7 @@ interface Player {
   car: "gmc" | "van";
   slot: number;
   state: CarState | null;
+  lastChat?: number;
 }
 
 interface CarState {
@@ -25,6 +26,8 @@ interface CarState {
 }
 
 const MAX_PLAYERS = 4;
+const CHAT_MAX = 80; // characters
+const CHAT_GAP_MS = 1200; // minimum time between one player's messages
 const ROOM = /^\/room\/([A-Z0-9]{4,8})$/;
 
 const finite = (a: unknown, n: number): a is number[] =>
@@ -76,6 +79,14 @@ export class Room extends DurableObject<Env> {
       player.state = state;
       ws.serializeAttachment(player);
       this.broadcast({ t: "state", id: player.id, ...state }, ws);
+    } else if (m.t === "chat") {
+      // Short chat line: collapse whitespace, cap the length, rate-limit per player.
+      const text = String(m.text ?? "").replace(/\s+/g, " ").trim().slice(0, CHAT_MAX);
+      const now = Date.now();
+      if (!text || (player.lastChat && now - player.lastChat < CHAT_GAP_MS)) return;
+      player.lastChat = now;
+      ws.serializeAttachment(player);
+      this.broadcast({ t: "chat", id: player.id, name: player.name, text }, ws);
     } else if (m.t === "ping") {
       ws.send(JSON.stringify({ t: "pong" }));
     }

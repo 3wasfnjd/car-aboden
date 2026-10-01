@@ -39,6 +39,7 @@ export class RoomClient {
       else if(m.t==='join'){this.peers.set(m.id,m);this.on.join?.(m);}
       else if(m.t==='leave'){this.peers.delete(m.id);this.on.leave?.(m);}
       else if(m.t==='state'){const p=this.peers.get(m.id);if(p)p.state=m;this.on.state?.(m);}
+      else if(m.t==='chat')this.on.chat?.(m);
     };
     ws.onclose=e=>{
       for(const id of [...this.peers.keys()])this.on.leave?.({id});this.peers.clear();
@@ -52,5 +53,9 @@ export class RoomClient {
     ws.onerror=()=>{};
   }
   send(msg){if(this.connected)this.ws.send(JSON.stringify(msg));}
+  // Same limits as the relay (80 characters, one line per 1.2 s), so nothing is
+  // shown locally that the server would drop. Returns the sent text, '' if not sent.
+  chat(text){const t=String(text||'').replace(/\s+/g,' ').trim().slice(0,80),now=Date.now();
+    if(!t||!this.connected||now-(this.lastChat||0)<1250)return '';this.lastChat=now;this.send({t:'chat',text:t});return t;}
   close(){this.closed=true;clearTimeout(this.timer);for(const id of [...this.peers.keys()])this.on.leave?.({id});this.peers.clear();try{this.ws?.close(1000);}catch{}}
 }

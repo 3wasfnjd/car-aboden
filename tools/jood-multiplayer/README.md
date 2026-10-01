@@ -7,8 +7,8 @@ data: a room exists while someone is connected.
 
 Messages (JSON):
 
-- server → client: `welcome {id, slot, peers}`, `join {id, name, car, slot}`, `leave {id}`, `state {id, p, q, v, s, st, f}`
-- client → server: `state {p, q, v, s, st, f}` (validated: finite numbers only), `ping`
+- server → client: `welcome {id, slot, peers}`, `join {id, name, car, slot}`, `leave {id}`, `state {id, p, q, v, s, st, f}`, `chat {id, name, text}`
+- client → server: `state {p, q, v, s, st, f}` (validated: finite numbers only), `chat {text}` (≤ 80 characters, at most one per 1.2 s per player), `ping`
 
 `ALLOWED_ORIGINS` in `wrangler.jsonc` limits which sites may connect (GitHub Pages and the local dev server).
 

@@ -23,6 +23,29 @@ function nameTag(name,color) {
   const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false,transparent:true}));s.scale.set(3.2,.8,1);s.renderOrder=5;return s;
 }
 
+// Cartoon speech bubble (canvas sprite) for chat lines, wrapped to two lines.
+export function speechBubble(text,color='#f25c9c') {
+  const c=document.createElement('canvas');c.width=640;c.height=240;const g=c.getContext('2d');
+  g.font='800 52px "Baloo Bhaijaan 2", Tahoma, Arial, sans-serif';g.direction='rtl';
+  const words=text.split(' '),lines=[''];
+  for(const w of words){const t=(lines.at(-1)+' '+w).trim();if(g.measureText(t).width>540&&lines.at(-1)){if(lines.length===2){lines[1]+='…';break;}lines.push(w);}else lines[lines.length-1]=t;}
+  const w=Math.min(620,Math.max(...lines.map(l=>g.measureText(l).width))+70),h=lines.length*62+44,x=320-w/2,y=8;
+  g.fillStyle='#fffafc';g.strokeStyle=color;g.lineWidth=8;g.beginPath();g.roundRect(x,y,w,h,36);g.fill();g.stroke();
+  g.beginPath();g.moveTo(296,y+h-4);g.lineTo(320,y+h+34);g.lineTo(344,y+h-4);g.closePath();g.fill();g.stroke();
+  g.fillStyle='#fffafc';g.fillRect(300,y+h-10,40,8);
+  g.fillStyle='#a8245f';g.textAlign='center';g.textBaseline='middle';lines.forEach((l,i)=>g.fillText(l,320,y+40+i*62));
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false,transparent:true}));s.scale.set(6.4,2.4,1);s.renderOrder=6;
+  s.center.set(.5,0);return s;
+}
+// Show a bubble above a car root for a few seconds, replacing any previous one.
+export function sayAbove(root,text,color,height,seconds=5) {
+  if(root.userData.bubble){root.remove(root.userData.bubble);root.userData.bubble.material.map.dispose();root.userData.bubble.material.dispose();}
+  const b=speechBubble(text,color);b.position.y=height;root.add(b);root.userData.bubble=b;
+  clearTimeout(root.userData.bubbleTimer);
+  root.userData.bubbleTimer=setTimeout(()=>{if(root.userData.bubble===b){root.remove(b);b.material.map.dispose();b.material.dispose();root.userData.bubble=null;}},seconds*1000);
+}
+
 export class RemoteCars {
   constructor({parent,world,modelBase='../models/'}){this.parent=parent;this.world=world;this.modelBase=modelBase;this.cars=new Map();}
   get count(){return [...this.cars.values()].filter(c=>c.ready).length;}
@@ -44,9 +67,10 @@ export class RemoteCars {
     const body=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC});
     rig.body.shapes.forEach((s,i)=>body.addShape(new CANNON.Box(s.halfExtents.clone()),rig.body.shapeOffsets[i].clone()));
     body.position.set(0,-50,0);this.world.addBody(body);
-    Object.assign(entry,{visual,flowers,body,tag,radius:rig.params.wheelRadius,ready:true});rig.dispose();
+    Object.assign(entry,{visual,flowers,body,tag,top,radius:rig.params.wheelRadius,ready:true});rig.dispose();
     if(entry.target)this.snap(entry);
   }
+  say(id,text){const e=this.cars.get(id);if(e?.ready)sayAbove(e.visual.root,text,PLAYER_COLORS[e.peer.slot%PLAYER_COLORS.length],e.top+1.5);}
   remove(id) {
     const e=this.cars.get(id);if(!e)return;this.cars.delete(id);
     if(!e.ready)return;e.lights?.dispose();e.flowers?.dispose();e.visual.dispose();this.world.removeBody(e.body);e.tag.material.map.dispose();e.tag.material.dispose();

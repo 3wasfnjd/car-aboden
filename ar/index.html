@@ -79,6 +79,17 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
 #mpPanel .mp-hint{font-size:12px;line-height:1.7;color:#b06a8a;margin:8px 0 0}
 #mpPanel .mp-players{font-size:15px;font-weight:800;line-height:1.8;margin:8px 0}
 #mpToggle[aria-pressed=false]{filter:saturate(.3) brightness(1.05)}
+/* Chat: button beside ⋯, quick chips + input bar, and a small message log. */
+#chatBtn{position:absolute;top:max(12px,env(safe-area-inset-top));right:calc(max(12px,env(safe-area-inset-right)) + 54px)}
+#chatBar{position:absolute;z-index:6;top:calc(max(12px,env(safe-area-inset-top)) + 54px);left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));pointer-events:auto;background:#fff5f9f5;border:3px solid #fff;border-radius:22px;padding:10px;box-shadow:0 14px 30px #a8245f40;font-family:var(--cute)}
+#chatBar .chat-quick{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+#chatBar .chat-quick button{flex:none;font:inherit;font-weight:800;font-size:14px;color:var(--p700);border:2px solid #fff;border-radius:999px;background:linear-gradient(180deg,#fff,var(--p100));box-shadow:0 2px 0 var(--p200);padding:6px 12px}
+#chatBar .chat-row{display:flex;gap:8px}
+#chatInput{flex:1;min-width:0;font:inherit;font-size:16px;padding:10px 14px;border-radius:999px;border:2px solid #ffc6dc;background:#fff;color:var(--p700)}
+#chatSend.candy{border-radius:999px;padding:0 18px;font-size:15px}#chatSend.candy::after{display:none}
+#chatLog{position:absolute;top:calc(max(14px,env(safe-area-inset-top)) + 52px);left:max(12px,env(safe-area-inset-left));max-width:min(70%,320px);display:flex;flex-direction:column;gap:6px;pointer-events:none;font-family:var(--cute)}
+#chatLog p{margin:0;background:#fff5f9e8;border:2px solid #fff;border-radius:16px;padding:6px 12px;font-size:13px;font-weight:600;color:#7a2a4f;box-shadow:0 4px 12px #a8245f26;transition:opacity .6s}
+#chatLog b{font-weight:800}#chatLog p.fade{opacity:0}
 @keyframes cruise{50%{box-shadow:0 0 0 10px #2a9d7820,0 0 30px #5ef2c050}}
 
 /* ---- Candy theme: pink jelly buttons that match the rose car ---- */
@@ -137,6 +148,15 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
 <main id="hud">
   <button id="exitAr" class="round pearl" aria-label="خروج من الواقع المعزز">×</button>
   <button id="menuBtn" class="round pearl" aria-label="خيارات" aria-expanded="false" hidden>⋯</button>
+  <button id="chatBtn" class="round pearl" aria-label="رسالة" aria-expanded="false" hidden>💬</button>
+  <div id="chatLog" aria-live="polite"></div>
+  <form id="chatBar" hidden autocomplete="off">
+    <div class="chat-quick">
+      <button type="button" data-say="❤️">❤️</button><button type="button" data-say="😂">😂</button><button type="button" data-say="🌸">🌸</button>
+      <button type="button" data-say="يلا نتسابق! 🏁">يلا نتسابق! 🏁</button><button type="button" data-say="وينك؟ 👀">وينك؟ 👀</button><button type="button" data-say="حلوة سيارتك! 💕">حلوة سيارتك! 💕</button>
+    </div>
+    <div class="chat-row"><input id="chatInput" maxlength="80" enterkeyhint="send" placeholder="اكتب رسالة قصيرة…"><button id="chatSend" class="candy" type="submit">إرسال</button></div>
+  </form>
   <div id="menu" hidden>
     <button id="reset">🔄 إعادة السيارة</button>
     <button id="move">📍 نقل السيارة</button>
@@ -223,7 +243,7 @@ import { VEHICLES } from '../src/choice.js';
 import { Autopilot } from '../src/autopilot.js';
 import { RomanticMusic } from '../src/music.js';
 import { RoomClient, PUBLIC_ROOMS, cleanRoomCode, multiplayerServer, carState } from '../src/multiplayer.js';
-import { RemoteCars, PLAYER_COLORS } from '../src/remote-cars.js';
+import { RemoteCars, PLAYER_COLORS, sayAbove } from '../src/remote-cars.js';
 import { FlowerEffects } from '../src/flowers.js';
 import { applyRosePaint } from '../src/paint.js';
 import { addCuteDecor, addVanLabels, addVanLights } from '../src/decor.js';
@@ -328,7 +348,7 @@ async function setupScene(){
   let status={loaded:false};
   try{status=await loadVehicleModel(visual,'../models/'+VEHICLES.van.config,car);}catch(e){console.warn(e);notify('تعذر تحميل السيارة؛ تظهر السيارة المؤقتة');}
   visual.sync(car);
-  const box=new THREE.Box3().setFromObject(visual.root);carLength=Math.max(1,box.max.z-box.min.z);
+  const box=new THREE.Box3().setFromObject(visual.root);carLength=Math.max(1,box.max.z-box.min.z);carTop=box.max.y-visual.root.position.y;
   // The GMC gets pink paint, the awning and a bed bouquet; the van already has
   // them. Petals and crystals drop behind the car onto the AR floor (Y=0).
   try{if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});const l=addVanLabels(visual,visual.modelLabels);status.labels={sign:!!l?.sign,plate:!!l?.plate};
@@ -399,12 +419,12 @@ function place(){
   if(music.enabled)music.start();
   if(!reticle.visible||$('placeBtn').disabled){notify('وجّه الكاميرا للأرض أولًا');return;}
   placed=true;reticle.visible=false;resetCar();
-  $('placement').hidden=true;$('driveControls').hidden=false;$('menuBtn').hidden=false;input.setEnabled(true);steerSmooth=0;
+  $('placement').hidden=true;$('driveControls').hidden=false;$('menuBtn').hidden=false;$('chatBtn').hidden=false;input.setEnabled(true);steerSmooth=0;
   hideStatus();mpView();
 }
 function move(){
   placed=false;input.setEnabled(false);resetCar();flowers?.clearTrail();mpView();
-  $('driveControls').hidden=true;$('menuBtn').hidden=true;showMenu(false);$('placement').hidden=false;stableSince=null;
+  $('driveControls').hidden=true;$('menuBtn').hidden=true;$('chatBtn').hidden=true;showChat(false);showMenu(false);$('placement').hidden=false;stableSince=null;
   setStatus('وجّه الجوال للمكان الجديد');
 }
 
@@ -517,7 +537,7 @@ $('driveControls').hidden=true;
 // is ready; a full room (4) overflows to the next. ?room=CODE still makes a
 // private room. Each car's pose is relative to its player's stage, so everyone
 // sees all cars on their own floor; players get spread-out start slots.
-let room=null,remote=null,sendClock=0;
+let room=null,remote=null,sendClock=0,carTop=2.6;
 const SLOT_X=[0,6,-6,12];
 const store=(k,v)=>{try{v===undefined?localStorage.removeItem(k):localStorage.setItem(k,v);}catch{}};
 const readStore=k=>{try{return localStorage.getItem(k);}catch{return null;}};
@@ -543,10 +563,28 @@ async function goOnline(){
     join:p=>{remote.add(p);mpView();notify(`${p.name} دخلت معك 🌸`);},
     leave:p=>{remote.remove(p.id);mpView();},
     state:m=>remote.state(m),
+    chat:m=>{remote.say(m.id,m.text);logChat(m.name,m.text,(room?.peers.get(m.id)?.slot??1));},
     status:st=>{if(st!=='open')$('mpStatus').textContent=st==='retry'?'نعيد الاتصال…':'نتصل…';mpView();},
   }});
   room.connect();mpView();
 }
+// ---- Chat: short lines shown as a bubble over the sender's car and in a small log.
+function logChat(name,text,slot){
+  const p=document.createElement('p'),b=document.createElement('b');b.style.color=PLAYER_COLORS[slot%PLAYER_COLORS.length];
+  b.textContent=name+': ';p.append(b,document.createTextNode(text));$('chatLog').append(p);
+  while($('chatLog').children.length>3)$('chatLog').firstChild.remove();
+  setTimeout(()=>p.classList.add('fade'),6000);setTimeout(()=>p.remove(),6700);
+}
+function showChat(open){$('chatBar').hidden=!open;$('chatBtn').setAttribute('aria-expanded',String(open));if(open){showMenu(false);setTimeout(()=>$('chatInput').focus(),50);}}
+function sendChat(text){
+  if(!room?.connected){notify('الرسائل تشتغل لما تكون أونلاين 👯');return;}
+  const sent=room.chat(text);if(!sent){if(String(text||'').trim())notify('استنى ثانية قبل الرسالة الجاية ⏳');return;}
+  sayAbove(visual.root,sent,PLAYER_COLORS[room.slot%PLAYER_COLORS.length],carTop+1.5);logChat(readName()||'أنت',sent,room.slot);
+  $('chatInput').value='';showChat(false);
+}
+$('chatBtn').addEventListener('click',()=>showChat($('chatBar').hidden));
+$('chatBar').addEventListener('submit',e=>{e.preventDefault();sendChat($('chatInput').value);});
+for(const b of document.querySelectorAll('#chatBar [data-say]'))b.addEventListener('click',()=>sendChat(b.dataset.say));
 function goOffline(){if(!room)return;room.close();room=null;remote?.clear();car.checkpoint=[...SPAWN];$('mpStatus').textContent='';mpView();}
 $('mpBtn').addEventListener('click',()=>{showMenu(false);$('mpPanel').hidden=false;mpView();});
 $('mpClose').addEventListener('click',()=>{$('mpPanel').hidden=true;});
