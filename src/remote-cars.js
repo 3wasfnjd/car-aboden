@@ -59,7 +59,7 @@ export class RemoteCars {
     visual.sync(rig);entry.wheelBase=visual.wheelMounts.map(m=>m.position.clone());
     let flowers=null;
     try{
-      if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});addVanLabels(visual,visual.modelLabels);entry.lights=addVanLights(visual,visual.modelLights);}
+      if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});addVanLabels(visual,visual.modelLabels,{signText:(peer.name||'جود').slice(0,16)});entry.lights=addVanLights(visual,visual.modelLights);}
       else{applyRosePaint(visual);flowers=new FlowerEffects({visual});flowers.setCanopy(addCuteDecor(visual,flowers.bed).canopy);}
     }catch(e){console.warn(e);}
     const top=new THREE.Box3().setFromObject(visual.root).max.y-visual.root.position.y;

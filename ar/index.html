@@ -90,6 +90,9 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
 #chatLog{position:absolute;top:calc(max(14px,env(safe-area-inset-top)) + 52px);left:max(12px,env(safe-area-inset-left));max-width:min(70%,320px);display:flex;flex-direction:column;gap:6px;pointer-events:none;font-family:var(--cute)}
 #chatLog p{margin:0;background:#fff5f9e8;border:2px solid #fff;border-radius:16px;padding:6px 12px;font-size:13px;font-weight:600;color:#7a2a4f;box-shadow:0 4px 12px #a8245f26;transition:opacity .6s}
 #chatLog b{font-weight:800}#chatLog p.fade{opacity:0}
+/* Name on the roof sign: field on the intro card. */
+#arIntro .intro-name{display:block;font-family:var(--cute);font-weight:800;font-size:14px;color:var(--p700);margin:0 0 6px}
+#arIntro .intro-name-input{width:100%;font-family:var(--cute);font-size:17px;padding:11px 16px;margin:0 0 14px;border-radius:999px;border:2px solid #ffc6dc;background:#fff;color:var(--p700);text-align:center}
 @keyframes cruise{50%{box-shadow:0 0 0 10px #2a9d7820,0 0 30px #5ef2c050}}
 
 /* ---- Candy theme: pink jelly buttons that match the rose car ---- */
@@ -161,6 +164,7 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
     <button id="reset">🔄 إعادة السيارة</button>
     <button id="move">📍 نقل السيارة</button>
     <button id="flowersBtn" aria-pressed="true">🌸 الورود والبلورات</button>
+    <button id="nameBtn">✏️ اسمي على اللافتة</button>
     <button id="mpBtn">👯 اللعب الجماعي</button>
     <button id="musicBtn" aria-pressed="true">🎵 الموسيقى</button>
     <button id="lightsBtn" aria-pressed="true">💡 الأضواء</button>
@@ -171,7 +175,7 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
     <header><b>👯 اللعب الجماعي</b><button id="mpClose" class="round pearl" aria-label="إغلاق">×</button></header>
     <p class="mp-hint">تدخل الغرفة العامة تلقائيًا، وكل من يفتح جود بجواله يطلع معك على أرضك. حتى 4 بكل غرفة، والزحمة تنتقل للغرفة اللي بعدها.</p>
     <p id="mpPlayers" class="mp-players"></p>
-    <label for="mpName">اسمك</label>
+    <label for="mpName">✏️ اسمك (يطلع على لافتة شاحنتك)</label>
     <div class="mp-join"><input id="mpName" maxlength="16" autocomplete="nickname" placeholder="مثلًا: سارة"><button id="mpSaveName">حفظ</button></div>
     <button id="mpToggle" class="candy" aria-pressed="true">👯 اللعب الجماعي: شغّال</button>
     <p id="mpStatus" class="mp-hint" role="status"></p>
@@ -224,6 +228,8 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
     <h1>جود<span class="brand-dot">.</span></h1>
     <p class="tagline">شاحنة الورد على أرضك.<br><strong>وأنت تسوقها.</strong></p>
     <p class="intro-text">اسمح بالكاميرا، وجّه الجوال للأرض وحرّكه ببطء لين تطلع شاحنة الورد، اختر حجمها، ثبّتها، وسُقها بالأزرار.</p>
+    <label class="intro-name" for="introName">✏️ اسمك على اللافتة</label>
+    <input id="introName" class="intro-name-input" maxlength="16" autocomplete="nickname" placeholder="مثلًا: سارة (اختياري)">
     <button id="startBtn" class="start candy" disabled>تجهيز محرك الواقع المعزز…</button>
     <p id="loadState" class="load-state" role="status"></p>
     <div id="arError"></div>
@@ -281,7 +287,7 @@ const MAX_DISTANCE=120;
 // Same top speed as the game lab: about 0.95 m/s at the default 35 cm size.
 const AR_MAX_SPEED=14;
 let sizeIndex=4,carLength=5,placed=false,sceneReady=false,xrReady=false,xrStarted=false,failed=false;
-let scene,camera,renderer,anchor,visual,car,input,world,sun,shadowPlane,reticle,flowers=null,vanLights=null;
+let scene,camera,renderer,anchor,visual,car,input,world,sun,shadowPlane,reticle,flowers=null,vanLights=null,vanLabels=null;
 let trackingNormalSince=null,trackingLastSeen=-Infinity,trackingStatus='LIMITED';
 let lastTick=0,accumulator=0,stableSince=null,toastTimer=0;
 const ray=new THREE.Raycaster(),centre=new THREE.Vector2(0,0),ground=new THREE.Plane(new THREE.Vector3(0,1,0),0);
@@ -351,7 +357,7 @@ async function setupScene(){
   const box=new THREE.Box3().setFromObject(visual.root);carLength=Math.max(1,box.max.z-box.min.z);carTop=box.max.y-visual.root.position.y;
   // The GMC gets pink paint, the awning and a bed bouquet; the van already has
   // them. Petals and crystals drop behind the car onto the AR floor (Y=0).
-  try{if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});const l=addVanLabels(visual,visual.modelLabels);status.labels={sign:!!l?.sign,plate:!!l?.plate};
+  try{if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});const l=vanLabels=addVanLabels(visual,visual.modelLabels,{signText:readName()||'جود'});status.labels={sign:!!l?.sign,plate:!!l?.plate};
     vanLights=addVanLights(visual,visual.modelLights);if(vanLights){vanLights.on=readLightsPref();status.lights=vanLights.bulbs;paintLights();}}else{status.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual});
     const decor=addCuteDecor(visual,flowers.bed);flowers.setCanopy(decor.canopy);status.decor={canopy:!!decor.canopy,sign:!!decor.sign};}}catch(e){console.warn(e);}
   showSize();
@@ -503,6 +509,7 @@ const music=new RomanticMusic();
 const paintMusic=()=>{$('musicBtn').setAttribute('aria-pressed',String(music.enabled));$('musicBtn').textContent=music.enabled?'🎵 الموسيقى: شغّالة':'🎵 الموسيقى: موقفة';};paintMusic();
 $('musicBtn').addEventListener('click',()=>{music.toggle();paintMusic();});
 $('startBtn').addEventListener('click',()=>{
+  if(($('introName').value||'').trim()!==readName())setName($('introName').value,false);
   if(music.enabled)music.start();
   if(failed){location.reload();return;}
   if(!xrReady||xrStarted)return;
@@ -589,10 +596,16 @@ function goOffline(){if(!room)return;room.close();room=null;remote?.clear();car.
 $('mpBtn').addEventListener('click',()=>{showMenu(false);$('mpPanel').hidden=false;mpView();});
 $('mpClose').addEventListener('click',()=>{$('mpPanel').hidden=true;});
 $('mpToggle').addEventListener('click',()=>{if(room){goOffline();store('jood-online','off');notify('طفّيت اللعب الجماعي');}else{store('jood-online');goOnline();}});
-$('mpSaveName').addEventListener('click',()=>{
-  const name=($('mpName').value||'').trim().slice(0,16);store('jood-name',name);notify('حفظت اسمك ✓');
+// One name everywhere: roof sign, name tag for others, multiplayer list.
+function setName(raw,announce=true){
+  const name=String(raw||'').replace(/\s+/g,' ').trim().slice(0,16);store('jood-name',name);
+  $('mpName').value=name;$('introName').value=name;vanLabels?.setSign(name||'جود');
+  if(announce)notify(name?`اسمك على اللافتة: ${name} ✓`:'رجعت اللافتة: جود');
   if(room){goOffline();goOnline();}
-});
+}
+$('introName').value=readName();
+$('mpSaveName').addEventListener('click',()=>setName($('mpName').value));
+$('nameBtn').addEventListener('click',()=>{showMenu(false);$('mpPanel').hidden=false;mpView();setTimeout(()=>$('mpName').focus(),50);});
 window.addEventListener('pagehide',()=>room?.close());
 if(window.XR8)initXR();else window.addEventListener('xrloaded',initXR,{once:true});
 setTimeout(()=>{if(!xrReady&&!failed)$('loadState').textContent='محرك AR يتأخر. تحقق من الاتصال ثم أعد تحميل الصفحة.';},12000);

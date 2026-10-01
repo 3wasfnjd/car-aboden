@@ -23,7 +23,10 @@ function signTexture(text) {
   const r=86;g.fillStyle='#fff8f0';g.beginPath();g.roundRect(8,8,496,176,r);g.fill();
   g.lineWidth=12;g.strokeStyle='#ff9fc6';g.stroke();
   g.setLineDash([4,14]);g.lineCap='round';g.lineWidth=6;g.strokeStyle='#ffd1e3';g.beginPath();g.roundRect(30,30,452,132,66);g.stroke();g.setLineDash([]);
-  g.fillStyle=ROSE;g.font='800 92px "Baloo Bhaijaan 2", Tahoma, Arial, sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(text,256,104);
+  // Long names shrink to fit between the hearts.
+  let size=92;const font=()=>`800 ${size}px "Baloo Bhaijaan 2", Tahoma, Arial, sans-serif`;g.font=font();
+  while(g.measureText(text).width>320&&size>34){size-=4;g.font=font();}
+  g.fillStyle=ROSE;g.textAlign='center';g.textBaseline='middle';g.fillText(text,256,104);
   heart(g,70,96,20,'#ff7cb1');heart(g,442,96,20,'#ff7cb1');heart(g,108,60,9,'#ffc1d9');heart(g,404,140,9,'#ffc1d9');
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;
 }
@@ -132,7 +135,10 @@ export function addVanLabels(visual,labels,{signText='جود',plate='جود'}={}
   }
   if(pl){const m=new THREE.Mesh(new THREE.PlaneGeometry(pl.width*1.25,pl.height*1.3),plateMat);m.position.copy(pl.center).add(new THREE.Vector3(0,0,.015));group.add(m);}
   visual.root.add(group);
-  return {group,sign:!!sign,plate:!!pl,dispose(){group.removeFromParent();group.traverse(o=>o.geometry?.dispose());for(const m of [signMat,rimMat,plateMat]){m.map?.dispose();m.dispose();}}};
+  return {group,sign:!!sign,plate:!!pl,
+    // Rewrite the roof sign (the player's name).
+    setSign(text){const old=signMat.map;signMat.map=signTexture(String(text||signText).slice(0,16));signMat.needsUpdate=true;old?.dispose();},
+    dispose(){group.removeFromParent();group.traverse(o=>o.geometry?.dispose());for(const m of [signMat,rimMat,plateMat]){m.map?.dispose();m.dispose();}}};
 }
 
 // ---- Van lights: fairy-light strings, glowing headlights and a pink underglow.
