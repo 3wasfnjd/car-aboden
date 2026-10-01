@@ -63,7 +63,7 @@ export async function loadVehicleModel(visual, configURL='models/vehicle.json', 
   if(cfg.profile==='tripo-flower-truck'){
     if(!cfg.model)throw new Error('حدد ملف شاحنة الورد');
     const prepared=prepareFlowerTruckModel(await load(cfg.model),{length:Number(cfg.length)||4.4,wheelLocalY:car?car.params.wheelY-car.params.restLength:-.2});
-    const info=installGmcModel(visual,car,prepared);visual.modelEmit=prepared.emit;visual.modelLabels=prepared.labels;return info;
+    const info=installGmcModel(visual,car,prepared);visual.modelEmit=prepared.emit;visual.modelLabels=prepared.labels;visual.modelLights=prepared.lights;return info;
   }
   if(cfg.profile==='gmc-sierra-work-truck'||cfg.profile==='gmc-sierra-red-light'){
     if(!cfg.model)throw new Error('حدد ملف GMC');

@@ -8,6 +8,9 @@ import * as THREE from 'three';
 export const FLOWER_TRUCK_WHEELS={centers:[[-.205,.3],[.205,.3],[-.205,-.29],[.205,-.29]],radius:.105,inner:.14};
 // Printed "Flower Truck" roof sign and "FLOWER" plate (front faces, model units),
 // covered at runtime with the Jood sign and plate.
+// Light anchors measured on the model: headlight bulges, the awnings'
+// scalloped edges (right side, mirrored left), and the roof's outer edge.
+export const FLOWER_TRUCK_LIGHTS={headlights:[[-.14,.23,.49],[.14,.23,.49]],awning:{x:.33,y:.49,z0:-.3,z1:.2},roof:{x:.235,y:.62,z0:-.42,z1:.2}};
 export const FLOWER_TRUCK_LABELS={sign:{center:[0,.645,.252],width:.38,height:.13},plate:{center:[0,.105,.5],width:.14,height:.055}};
 
 function subset(source,triangles) {
@@ -72,6 +75,12 @@ export function prepareFlowerTruckModel(source,{length=4.4,wheelLocalY=-.2,spec=
   const at=([x,y,z])=>new THREE.Vector3(x*scale+offset.x,y*scale+offset.y,z*scale+offset.z);
   const labels=Object.fromEntries(Object.entries(FLOWER_TRUCK_LABELS).map(([k,l])=>[k,{center:at(l.center),width:l.width*scale,height:l.height*scale}]));
   const triangles=(index?index.count:p.count)/3;
-  return {body:bodyGroup,wheelMeshes:wheels.map(w=>w.mesh),wheels,shell,cabin,scale,emit,labels,
+  const L=FLOWER_TRUCK_LIGHTS;
+  const lights={headlights:L.headlights.map(at),
+    // The van has an awning on each side (open flower window right, shutter left).
+    awnings:[1,-1].map(s=>[at([s*L.awning.x,L.awning.y,L.awning.z0]),at([s*L.awning.x,L.awning.y,L.awning.z1])]),
+    roof:[at([-L.roof.x,L.roof.y,L.roof.z1]),at([-L.roof.x,L.roof.y,L.roof.z0]),at([L.roof.x,L.roof.y,L.roof.z0]),at([L.roof.x,L.roof.y,L.roof.z1])],
+    floor:{width:bs.x*1.25,length:bs.z*1.15,y:wheelLocalY-R*scale+.03}};
+  return {body:bodyGroup,wheelMeshes:wheels.map(w=>w.mesh),wheels,shell,cabin,scale,emit,labels,lights,
     info:{name:'Flower Truck',variant:'tripo-flower-truck',length,scale,triangles,wheelCount:4,wheelTriangles:groups.map(g=>g.length),wheelCenters:wheels.map(w=>w.center.toArray()),wheelRadii:wheels.map(w=>w.radius)}};
 }

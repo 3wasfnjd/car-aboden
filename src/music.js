@@ -2,7 +2,7 @@
 // files): a music-box melody over arpeggios, warm string pads and a gentle
 // bass in F major, with a generated reverb. Starts only from a user gesture.
 
-const BPM=72,BEAT=60/BPM,BAR=4*BEAT,VOLUME=.85;
+const BPM=72,BEAT=60/BPM,BAR=4*BEAT,VOLUME=.5;
 const mtof=m=>440*2**((m-69)/12);
 // Eight-bar loop: Fmaj7 | Am7 | Bbmaj7 | C | Dm7 | Am7 | Gm7 | Csus4→C
 const CHORDS=[[53,57,60,64],[57,60,64,67],[58,62,65,69],[48,55,60,64],[50,57,60,65],[57,60,64,67],[55,58,62,65],[48,53,55,60]];

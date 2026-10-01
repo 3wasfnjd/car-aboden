@@ -143,6 +143,7 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
     <button id="flowersBtn" aria-pressed="true">🌸 الورود والبلورات</button>
     <button id="mpBtn">👯 اللعب الجماعي</button>
     <button id="musicBtn" aria-pressed="true">🎵 الموسيقى</button>
+    <button id="lightsBtn" aria-pressed="true">💡 الأضواء</button>
     <div class="menu-size" aria-label="حجم السيارة"><button id="sizeDown2" aria-label="تصغير السيارة">−</button><output id="sizeValue2">1 م</output><button id="sizeUp2" aria-label="تكبير السيارة">+</button></div>
   </div>
   <div id="mpBadge" hidden>👥 أونلاين · <span id="mpBadgeCount">1</span></div>
@@ -225,7 +226,7 @@ import { RoomClient, PUBLIC_ROOMS, cleanRoomCode, multiplayerServer, carState } 
 import { RemoteCars, PLAYER_COLORS } from '../src/remote-cars.js';
 import { FlowerEffects } from '../src/flowers.js';
 import { applyRosePaint } from '../src/paint.js';
-import { addCuteDecor, addVanLabels } from '../src/decor.js';
+import { addCuteDecor, addVanLabels, addVanLights } from '../src/decor.js';
 window.THREE=THREE;
 
 function syncViewport(){
@@ -260,7 +261,7 @@ const MAX_DISTANCE=120;
 // Same top speed as the game lab: about 0.95 m/s at the default 35 cm size.
 const AR_MAX_SPEED=14;
 let sizeIndex=4,carLength=5,placed=false,sceneReady=false,xrReady=false,xrStarted=false,failed=false;
-let scene,camera,renderer,anchor,visual,car,input,world,sun,shadowPlane,reticle,flowers=null;
+let scene,camera,renderer,anchor,visual,car,input,world,sun,shadowPlane,reticle,flowers=null,vanLights=null;
 let trackingNormalSince=null,trackingLastSeen=-Infinity,trackingStatus='LIMITED';
 let lastTick=0,accumulator=0,stableSince=null,toastTimer=0;
 const ray=new THREE.Raycaster(),centre=new THREE.Vector2(0,0),ground=new THREE.Plane(new THREE.Vector3(0,1,0),0);
@@ -330,7 +331,8 @@ async function setupScene(){
   const box=new THREE.Box3().setFromObject(visual.root);carLength=Math.max(1,box.max.z-box.min.z);
   // The GMC gets pink paint, the awning and a bed bouquet; the van already has
   // them. Petals and crystals drop behind the car onto the AR floor (Y=0).
-  try{if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});const l=addVanLabels(visual,visual.modelLabels);status.labels={sign:!!l?.sign,plate:!!l?.plate};}else{status.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual});
+  try{if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});const l=addVanLabels(visual,visual.modelLabels);status.labels={sign:!!l?.sign,plate:!!l?.plate};
+    vanLights=addVanLights(visual,visual.modelLights);if(vanLights){vanLights.on=readLightsPref();status.lights=vanLights.bulbs;paintLights();}}else{status.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual});
     const decor=addCuteDecor(visual,flowers.bed);flowers.setCanopy(decor.canopy);status.decor={canopy:!!decor.canopy,sign:!!decor.sign};}}catch(e){console.warn(e);}
   showSize();
   window.__motriAr={car,visual,anchor,status,get music(){return music;},get room(){return room;},get remote(){return remote;},get flowers(){return flowers;},get placed(){return placed;}};
@@ -440,6 +442,7 @@ function tick(now){
   }else if(placed){accumulator=0;setStatus('التتبع ضعيف — وجّه الجوال للأرض ببطء');}
   visual.sync(car);
   if(placed)flowers?.update(dt,{speed:car.speed,maxSpeed:car.params.maxSpeed,velocity:car.body.velocity});
+  vanLights?.update(dt);
   remote?.update(dt);
   if(room?.connected&&placed&&(sendClock+=dt)>=1/12){sendClock=0;room.send(carState(car,flowers?.enabled!==false));}
   visual.root.getWorldPosition(tmp);
@@ -470,6 +473,11 @@ function initXR(){
   }catch(e){console.error(e);fail('لم يكتمل تحميل محرك AR.');}
 }
 
+// Van lights (fairy lights, headlights, underglow): on by default, remembered.
+function readLightsPref(){try{return localStorage.getItem('jood-lights')!=='off';}catch{return true;}}
+function paintLights(){const on=vanLights?vanLights.on:readLightsPref();$('lightsBtn').setAttribute('aria-pressed',String(on));$('lightsBtn').textContent=on?'💡 الأضواء: شغّالة':'💡 الأضواء: موقفة';}
+paintLights();
+$('lightsBtn').addEventListener('click',()=>{if(!vanLights)return;vanLights.on=!vanLights.on;try{vanLights.on?localStorage.removeItem('jood-lights'):localStorage.setItem('jood-lights','off');}catch{}paintLights();});
 // Romantic background music: starts with the camera tap (a user gesture).
 const music=new RomanticMusic();
 const paintMusic=()=>{$('musicBtn').setAttribute('aria-pressed',String(music.enabled));$('musicBtn').textContent=music.enabled?'🎵 الموسيقى: شغّالة':'🎵 الموسيقى: موقفة';};paintMusic();

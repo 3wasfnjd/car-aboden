@@ -134,3 +134,52 @@ export function addVanLabels(visual,labels,{signText='جود',plate='جود'}={}
   visual.root.add(group);
   return {group,sign:!!sign,plate:!!pl,dispose(){group.removeFromParent();group.traverse(o=>o.geometry?.dispose());for(const m of [signMat,rimMat,plateMat]){m.map?.dispose();m.dispose();}}};
 }
+
+// ---- Van lights: fairy-light strings, glowing headlights and a pink underglow.
+function glowTexture(){
+  const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d'),r=g.createRadialGradient(32,32,0,32,32,32);
+  r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(.25,'rgba(255,255,255,.55)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(c);
+}
+const BULB_COLORS=['#fff1c9','#ff9ec7','#fff1c9','#ffc6e0'];
+export function addVanLights(visual,lights){
+  if(!lights)return null;
+  const group=new THREE.Group();group.name='VanLights';const tex=glowTexture(),bulbs=[],disposables=[tex];
+  const glowMat=color=>{const m=new THREE.SpriteMaterial({map:tex,color,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true});disposables.push(m);return m;};
+  const bulbGeo=new THREE.SphereGeometry(.065,12,10),wireMat=new THREE.MeshStandardMaterial({color:'#e9c3cf',roughness:.7});disposables.push(bulbGeo,wireMat);
+  // A sagging string between successive anchors with evenly spaced bulbs.
+  const string=(points,spacing=.2,sag=.07)=>{
+    for(let i=0;i<points.length-1;i++){
+      const a=points[i],b=points[i+1],len=a.distanceTo(b),n=Math.max(2,Math.round(len/spacing));
+      const at=t=>new THREE.Vector3().lerpVectors(a,b,t).add(new THREE.Vector3(0,-Math.sin(Math.PI*t)*sag,0));
+      const curve=new THREE.CatmullRomCurve3(Array.from({length:9},(_,k)=>at(k/8)));
+      const wire=new THREE.Mesh(new THREE.TubeGeometry(curve,24,.012,4),wireMat);group.add(wire);disposables.push(wire.geometry);
+      for(let k=i?1:0;k<=n;k++){
+        const p=at(k/n),color=BULB_COLORS[bulbs.length%BULB_COLORS.length];
+        const mat=new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:2,roughness:.3});disposables.push(mat);
+        const bulb=new THREE.Mesh(bulbGeo,mat);bulb.position.copy(p).add(new THREE.Vector3(0,-.07,0));
+        const glow=new THREE.Sprite(glowMat(color));glow.scale.setScalar(.62);glow.position.copy(bulb.position);
+        group.add(bulb,glow);bulbs.push({mat,glow,phase:Math.random()*Math.PI*2,speed:1.2+Math.random()*1.6});
+      }
+    }
+  };
+  for(const a of lights.awnings||[])string(a,.2,.06);
+  if(lights.roof)string(lights.roof,.24,.04);
+  const heads=(lights.headlights||[]).map(p=>{const g=new THREE.Sprite(glowMat('#fff3d6'));g.scale.setScalar(1.1);g.position.copy(p).add(new THREE.Vector3(0,0,.04));group.add(g);return g;});
+  let floor=null;
+  if(lights.floor){
+    const m=new THREE.MeshBasicMaterial({map:tex,color:'#ff6fae',transparent:true,opacity:.7,blending:THREE.AdditiveBlending,depthWrite:false});disposables.push(m);
+    floor=new THREE.Mesh(new THREE.PlaneGeometry(lights.floor.width,lights.floor.length).rotateX(-Math.PI/2),m);disposables.push(floor.geometry);
+    floor.position.y=lights.floor.y;floor.renderOrder=-1;group.add(floor);
+  }
+  visual.root.add(group);
+  let time=0,on=true;
+  return {group,bulbs:bulbs.length,
+    get on(){return on;},set on(v){on=!!v;group.visible=on;},
+    // Gentle twinkle on the bulbs and a slow breathing underglow.
+    update(dt){if(!on)return;time+=dt;
+      for(const b of bulbs){const k=.65+.35*Math.sin(time*b.speed+b.phase);b.mat.emissiveIntensity=1.2+k*1.6;b.glow.material.opacity=.6+.4*k;}
+      for(const h of heads)h.material.opacity=.85+.1*Math.sin(time*2.1);
+      if(floor)floor.material.opacity=.55+.18*Math.sin(time*1.3);},
+    dispose(){group.removeFromParent();disposables.forEach(d=>d.dispose?.());}};
+}

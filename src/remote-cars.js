@@ -10,7 +10,7 @@ import { loadVehicleModel } from './models.js';
 import { VEHICLES } from './choice.js';
 import { FlowerEffects } from './flowers.js';
 import { applyRosePaint } from './paint.js';
-import { addCuteDecor, addVanLabels } from './decor.js';
+import { addCuteDecor, addVanLabels, addVanLights } from './decor.js';
 
 export const PLAYER_COLORS=['#f25c9c','#9b6bf2','#22a98c','#ff9f43'];
 
@@ -36,7 +36,7 @@ export class RemoteCars {
     visual.sync(rig);entry.wheelBase=visual.wheelMounts.map(m=>m.position.clone());
     let flowers=null;
     try{
-      if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});addVanLabels(visual,visual.modelLabels);}
+      if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});addVanLabels(visual,visual.modelLabels);entry.lights=addVanLights(visual,visual.modelLights);}
       else{applyRosePaint(visual);flowers=new FlowerEffects({visual});flowers.setCanopy(addCuteDecor(visual,flowers.bed).canopy);}
     }catch(e){console.warn(e);}
     const top=new THREE.Box3().setFromObject(visual.root).max.y-visual.root.position.y;
@@ -49,7 +49,7 @@ export class RemoteCars {
   }
   remove(id) {
     const e=this.cars.get(id);if(!e)return;this.cars.delete(id);
-    if(!e.ready)return;e.flowers?.dispose();e.visual.dispose();this.world.removeBody(e.body);e.tag.material.map.dispose();e.tag.material.dispose();
+    if(!e.ready)return;e.lights?.dispose();e.flowers?.dispose();e.visual.dispose();this.world.removeBody(e.body);e.tag.material.map.dispose();e.tag.material.dispose();
   }
   clear(){for(const id of [...this.cars.keys()])this.remove(id);}
   state(m) {
@@ -70,6 +70,7 @@ export class RemoteCars {
       e.spin-=t.s*dt/e.radius;
       e.visual.wheelMounts.forEach((m,i)=>{m.position.copy(e.wheelBase[i]);m.quaternion.copy(yaw.setFromAxisAngle(Y,i<2?t.st:0)).multiply(spin.setFromAxisAngle(X,e.spin));});
       e.body.position.copy(root.position);e.body.quaternion.copy(root.quaternion);e.body.velocity.set(...t.v);
+      e.lights?.update(dt);
       if(e.flowers){e.flowers.enabled=t.f!==false;e.flowers.update(dt,{speed:t.s,maxSpeed:14,velocity:{x:t.v[0],y:t.v[1],z:t.v[2]}});}
     }
   }
