@@ -334,7 +334,7 @@ async function setupScene(){
   try{if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});const l=addVanLabels(visual,visual.modelLabels);status.labels={sign:!!l?.sign,plate:!!l?.plate};}else{status.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual});
     const decor=addCuteDecor(visual,flowers.bed);flowers.setCanopy(decor.canopy);status.decor={canopy:!!decor.canopy,sign:!!decor.sign};}}catch(e){console.warn(e);}
   showSize();
-  window.__motriAr={car,visual,anchor,status,get room(){return room;},get remote(){return remote;},get flowers(){return flowers;},get placed(){return placed;}};
+  window.__motriAr={car,visual,anchor,status,get music(){return music;},get room(){return room;},get remote(){return remote;},get flowers(){return flowers;},get placed(){return placed;}};
   remote=new RemoteCars({parent:anchor,world});
   sceneReady=true;lastTick=performance.now();
   if(onlineWanted())goOnline();
@@ -395,6 +395,7 @@ function stopDrive(){if(autoMode)setAuto(0);setCruise(false);reversing=false;ste
 function resetCar(){input?.reset();stopDrive();car.reset();accumulator=0;steerSmooth=0;visual.sync(car);}
 
 function place(){
+  if(music.enabled)music.start();
   if(!reticle.visible||$('placeBtn').disabled){notify('وجّه الكاميرا للأرض أولًا');return;}
   placed=true;reticle.visible=false;resetCar();
   $('placement').hidden=true;$('driveControls').hidden=false;$('menuBtn').hidden=false;input.setEnabled(true);steerSmooth=0;

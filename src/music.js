@@ -38,13 +38,22 @@ export class RomanticMusic {
     this.reverb=ctx.createConvolver();this.reverb.buffer=ir;
     const wet=ctx.createGain();wet.gain.value=.42;this.reverb.connect(wet).connect(this.master);
     this.dry=ctx.createGain();this.dry.gain.value=.8;this.dry.connect(this.master);this.dry.connect(this.reverb);
-    document.addEventListener('visibilitychange',()=>{if(!this.ctx)return;document.hidden?this.ctx.suspend():this.playing&&this.ctx.resume();});
+    document.addEventListener('visibilitychange',()=>{if(!this.ctx)return;document.hidden?this.ctx.suspend():this.wake();});
+    // iOS Safari suspends/interrupts page audio when the camera starts (AR) or
+    // after a call; it may only resume inside a user gesture, so retry on every touch.
+    for(const ev of ['touchend','click','pointerup','keydown'])document.addEventListener(ev,()=>this.wake(),true);
+    ctx.addEventListener?.('statechange',()=>{if(this.playing&&!document.hidden&&ctx.state!=='running')ctx.resume().catch(()=>{});});
     return true;
   }
+  // Resume after an interruption (camera start, phone call, background tab).
+  wake(){if(this.playing&&this.ctx&&!document.hidden&&this.ctx.state!=='running'){this.ctx.resume().catch(()=>{});this.unlock();}}
+  // A one-sample silent buffer played inside a gesture unlocks audio on iOS.
+  unlock(){try{const b=this.ctx.createBuffer(1,1,this.ctx.sampleRate),s=this.ctx.createBufferSource();s.buffer=b;s.connect(this.ctx.destination);s.start(0);}catch{}}
+  get running(){return !!this.ctx&&this.playing&&this.ctx.state==='running';}
   // Call from a tap/click handler (browsers only start audio after a gesture).
   start() {
-    if(this.playing)return;if(!this.ctx&&!this.setup())return;
-    this.ctx.resume();this.playing=true;
+    if(this.playing){this.wake();return;}if(!this.ctx&&!this.setup())return;
+    this.unlock();this.ctx.resume().catch(()=>{});this.playing=true;
     const t=this.ctx.currentTime;this.master.gain.cancelScheduledValues(t);this.master.gain.setValueAtTime(this.master.gain.value,t);this.master.gain.linearRampToValueAtTime(VOLUME,t+2.5);
     this.next=t+.1;this.bar=0;this.cycle=0;clearInterval(this.timer);this.timer=setInterval(()=>this.schedule(),100);this.schedule();
   }
