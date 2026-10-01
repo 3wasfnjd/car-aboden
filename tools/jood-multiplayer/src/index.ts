@@ -10,6 +10,9 @@ export interface Env {
   // ntfy.sh access token (Worker secret). Without it ntfy limits by IP, and the
   // IPs Workers share are almost always over that limit (HTTP 429).
   NTFY_TOKEN?: string;
+  // Telegram bot (Worker secrets): works from Workers without IP rate limits.
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_CHAT_ID?: string;
 }
 
 interface Player {
@@ -49,29 +52,27 @@ export class Room extends DurableObject<Env> {
   private notified = new Map<string, number>();
 
   private notifyJoin(room: string, name: string, players: number) {
-    const topic = this.env.NTFY_TOPIC;
-    if (!topic) return;
+    const { NTFY_TOPIC: topic, TELEGRAM_BOT_TOKEN: bot, TELEGRAM_CHAT_ID: chat } = this.env;
+    if (!topic && !(bot && chat)) return;
     const now = Date.now();
     if (now - (this.notified.get(name) ?? 0) < 10 * 60 * 1000) return;
     this.notified.set(name, now);
+    const message = `${name} دخل اللعبة (${room}) · ${players} ${players === 1 ? "لاعب" : "لاعبين"} الحين`;
+    const send = (label: string, url: string, body: object, headers: Record<string, string> = {}) =>
+      this.ctx.waitUntil(
+        fetch(url, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) })
+          .then(async (r) => console.log(`${label} ${r.status}`, r.ok ? "" : (await r.text()).slice(0, 300)))
+          .catch((e) => console.log(`${label} failed`, String(e))),
+      );
+    if (bot && chat) send("telegram", `https://api.telegram.org/bot${bot}/sendMessage`, { chat_id: chat, text: `🌸 جود\n${message}` });
     // JSON publish keeps Arabic text intact (headers must be ASCII).
-    this.ctx.waitUntil(
-      fetch("https://ntfy.sh/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(this.env.NTFY_TOKEN ? { Authorization: `Bearer ${this.env.NTFY_TOKEN}` } : {}),
-        },
-        body: JSON.stringify({
-          topic,
-          title: "جود 🌸",
-          message: `${name} دخل اللعبة (${room}) · ${players} ${players === 1 ? "لاعب" : "لاعبين"} الحين`,
-          tags: ["cherry_blossom"],
-        }),
-      })
-        .then(async (r) => console.log(`ntfy ${r.status}`, r.ok ? "" : (await r.text()).slice(0, 300)))
-        .catch((e) => console.log("ntfy failed", String(e))),
-    );
+    if (topic)
+      send(
+        "ntfy",
+        "https://ntfy.sh/",
+        { topic, title: "جود 🌸", message, tags: ["cherry_blossom"] },
+        this.env.NTFY_TOKEN ? { Authorization: `Bearer ${this.env.NTFY_TOKEN}` } : {},
+      );
   }
 
   async fetch(request: Request): Promise<Response> {

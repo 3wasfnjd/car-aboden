@@ -14,7 +14,10 @@ Messages (JSON):
 
 ## Join notifications (owner only)
 
-If the `NTFY_TOPIC` repository secret is set, the deploy workflow stores it as a Worker secret and the relay posts a push to that [ntfy](https://ntfy.sh) topic when someone joins (name, room, player count; at most once per name per 10 minutes). Subscribe to the same topic in the ntfy app. Without the secret nothing is sent.
+Join notifications for the owner (name, room, player count; at most once per name per 10 minutes), set as repository secrets and copied to the Worker by the deploy workflow:
+
+- **Telegram** (recommended): `TELEGRAM_BOT_TOKEN` from @BotFather. Send the bot any message before deploying and the workflow finds your chat id (or set `TELEGRAM_CHAT_ID`).
+- **ntfy**: `NTFY_TOPIC` (+ `NTFY_TOKEN`). ntfy.sh limits anonymous and free accounts by IP, and Workers share IPs, so it is often refused (429).
 
 ## Deploy
 

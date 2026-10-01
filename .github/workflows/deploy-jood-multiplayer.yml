@@ -34,16 +34,30 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Store the owner's ntfy topic (join notifications), if set
+      - name: Store the owner's join-notification settings, if set
         working-directory: tools/jood-multiplayer
         run: |
-          if [ -z "$NTFY_TOPIC" ]; then echo "No NTFY_TOPIC secret: join notifications stay off."; exit 0; fi
-          printf '%s' "$NTFY_TOPIC" | npx wrangler secret put NTFY_TOPIC
-          if [ -n "$NTFY_TOKEN" ]; then printf '%s' "$NTFY_TOKEN" | npx wrangler secret put NTFY_TOKEN
-          else echo "::warning::No NTFY_TOKEN secret: ntfy.sh usually refuses unauthenticated pushes from Cloudflare (429)."; fi
+          put(){ printf '%s' "$2" | npx wrangler secret put "$1"; }
+          [ -n "$NTFY_TOPIC" ] && put NTFY_TOPIC "$NTFY_TOPIC"
+          [ -n "$NTFY_TOKEN" ] && put NTFY_TOKEN "$NTFY_TOKEN"
+          if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
+            put TELEGRAM_BOT_TOKEN "$TELEGRAM_BOT_TOKEN"
+            # No chat id given: take it from the last message sent to the bot.
+            if [ -z "$TELEGRAM_CHAT_ID" ]; then
+              TELEGRAM_CHAT_ID=$(curl -fsS "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getUpdates" | jq -r '[.result[] | (.message // .my_chat_member // .edited_message).chat.id | select(. != null)] | last // empty')
+            fi
+            if [ -n "$TELEGRAM_CHAT_ID" ]; then
+              put TELEGRAM_CHAT_ID "$TELEGRAM_CHAT_ID"
+              curl -fsS -o /dev/null "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" --data-urlencode "text=🌸 جود: وصلت الإشعارات! بيجيك تنبيه هنا لما أحد يدخل اللعبة."
+            else
+              echo "::warning::Send any message to your Telegram bot, then run this workflow again."
+            fi
+          fi
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
