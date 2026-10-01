@@ -130,8 +130,8 @@ const $=id=>document.getElementById(id);
 const SIZES=[.20,.25,.30,.35,.45,.60,.80];
 const SPAWN=[0,.72,0];
 const MAX_DISTANCE=120;
-// Room-scale tune: about 0.6 m/s at the default 35 cm size (game lab keeps 14).
-const AR_MAX_SPEED=9;
+// Same top speed as the game lab: about 0.95 m/s at the default 35 cm size.
+const AR_MAX_SPEED=14;
 let sizeIndex=3,carLength=5,placed=false,sceneReady=false,xrReady=false,xrStarted=false,failed=false;
 let scene,camera,renderer,anchor,visual,car,input,world,sun,shadowPlane,reticle;
 let trackingNormalSince=null,trackingLastSeen=-Infinity,trackingStatus='LIMITED';
