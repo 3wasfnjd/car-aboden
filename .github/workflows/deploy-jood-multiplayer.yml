@@ -40,7 +40,11 @@ jobs:
           put(){ printf '%s' "$2" | npx wrangler secret put "$1"; }
           [ -n "$NTFY_TOPIC" ] && put NTFY_TOPIC "$NTFY_TOPIC"
           [ -n "$NTFY_TOKEN" ] && put NTFY_TOKEN "$NTFY_TOKEN"
+          # Forgive pasted spaces/newlines and a leading "bot".
+          TELEGRAM_BOT_TOKEN=$(printf '%s' "$TELEGRAM_BOT_TOKEN" | tr -d '[:space:]' | sed 's/^bot//')
           if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
+            if printf '%s' "$TELEGRAM_BOT_TOKEN" | grep -qE '^[0-9]{6,}:[A-Za-z0-9_-]{30,}$'; then echo "Bot token looks right (${#TELEGRAM_BOT_TOKEN} characters)."
+            else echo "::warning::TELEGRAM_BOT_TOKEN does not look like a BotFather token (digits:letters, ${#TELEGRAM_BOT_TOKEN} characters, has colon: $(case $TELEGRAM_BOT_TOKEN in *:*) echo yes;; *) echo no;; esac))."; fi
             put TELEGRAM_BOT_TOKEN "$TELEGRAM_BOT_TOKEN"
             # No chat id given: take it from the last message sent to the bot.
             echo "Bot: $(curl -sS "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getMe" | jq -c '{ok, username: .result.username, error: .description}')"
