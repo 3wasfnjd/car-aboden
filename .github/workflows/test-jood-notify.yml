@@ -26,8 +26,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           echo "Topic set: $([ -n "$NTFY_TOPIC" ] && echo yes || echo NO)"
-          echo "--- direct publish from the runner:"
-          curl -sS -H "Content-Type: application/json" -d "{\"topic\":\"$NTFY_TOPIC\",\"title\":\"جود 🌸\",\"message\":\"تجربة من GitHub\"}" https://ntfy.sh/ | head -c 300; echo
           npx wrangler tail jood-multiplayer --format pretty > tail.log 2>&1 &
           sleep 12
           node -e '
