@@ -172,6 +172,7 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
     <h1>جود<span class="brand-dot">.</span></h1>
     <p class="tagline">السيارة على أرضك.<br><strong>وأنت تسوقها.</strong></p>
     <p class="intro-text">اسمح بالكاميرا، وجّه الجوال للأرض وحرّكه ببطء حتى تظهر السيارة، اختر حجمها ثم ثبّتها وسُقها بنفس تحكم اللعبة.</p>
+    <div id="carPickAr" class="car-pick" role="group" aria-label="اختر السيارة"><button data-car="gmc" aria-pressed="true">🚙 جود · الجمس</button><button data-car="van" aria-pressed="false">🚐 شاحنة الورد</button></div>
     <button id="startBtn" class="start candy" disabled>تجهيز محرك الواقع المعزز…</button>
     <p id="loadState" class="load-state" role="status"></p>
     <div id="arError"></div>
@@ -187,6 +188,7 @@ import { MotriVehicle } from '../src/vehicle.js';
 import { CarVisual } from '../src/visuals.js';
 import { InputController } from '../src/input.js';
 import { loadVehicleModel } from '../src/models.js';
+import { VEHICLES, vehicleChoice, mountVehiclePicker } from '../src/choice.js';
 import { FlowerEffects } from '../src/flowers.js';
 import { applyRosePaint } from '../src/paint.js';
 import { addCuteDecor } from '../src/decor.js';
@@ -289,13 +291,13 @@ async function setupScene(){
   input=new InputController(resetCar,()=>{});input.setEnabled(false);
   $('precision').addEventListener('click',()=>{input.precision=!input.precision;$('precision').setAttribute('aria-pressed',String(input.precision));$('precision').textContent=input.precision?'قيادة دقيقة: مفعّلة':'قيادة دقيقة';});
   let status={loaded:false};
-  try{status=await loadVehicleModel(visual,'../models/vehicle.json',car);}catch(e){console.warn(e);notify('تعذر تحميل GMC؛ تظهر السيارة المؤقتة');}
+  try{status=await loadVehicleModel(visual,'../models/'+VEHICLES[vehicleChoice()].config,car);}catch(e){console.warn(e);notify('تعذر تحميل السيارة؛ تظهر السيارة المؤقتة');}
   visual.sync(car);
   const box=new THREE.Box3().setFromObject(visual.root);carLength=Math.max(1,box.max.z-box.min.z);
-  // Pink paint and painted roses; a procedural bouquet in the bed sheds petals
-  // behind the car onto the AR floor (Y=0).
-  try{status.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual});
-    const decor=addCuteDecor(visual,flowers.bed);flowers.setCanopy(decor.canopy);status.decor={canopy:!!decor.canopy,sign:!!decor.sign};}catch(e){console.warn(e);}
+  // The GMC gets pink paint, the awning and a bed bouquet; the van already has
+  // them. Petals and crystals drop behind the car onto the AR floor (Y=0).
+  try{if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});}else{status.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual});
+    const decor=addCuteDecor(visual,flowers.bed);flowers.setCanopy(decor.canopy);status.decor={canopy:!!decor.canopy,sign:!!decor.sign};}}catch(e){console.warn(e);}
   showSize();
   window.__motriAr={car,visual,anchor,status,get flowers(){return flowers;},get placed(){return placed;}};
   sceneReady=true;lastTick=performance.now();
@@ -411,6 +413,7 @@ for(const [id,side] of [['leftBtn','left'],['rightBtn','right']]){
 }
 window.addEventListener('blur',stopDrive);
 $('driveControls').hidden=true;
+mountVehiclePicker($('carPickAr'));
 if(window.XR8)initXR();else window.addEventListener('xrloaded',initXR,{once:true});
 setTimeout(()=>{if(!xrReady&&!failed)$('loadState').textContent='محرك AR يتأخر. تحقق من الاتصال ثم أعد تحميل الصفحة.';},12000);
 </script>

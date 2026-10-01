@@ -54,3 +54,9 @@ h1{font-size:clamp(60px,13vw,85px);line-height:1.2;margin:22px 0 12px;letter-spa
 @keyframes petal-fall{0%{transform:translate(0,0) rotate(0)}25%{transform:translate(18px,28vh) rotate(90deg)}50%{transform:translate(-14px,56vh) rotate(200deg)}75%{transform:translate(16px,84vh) rotate(290deg)}100%{transform:translate(-6px,112vh) rotate(380deg)}}
 @media(prefers-reduced-motion:reduce){.petal-rain{display:none}.intro .shine,.intro .start{animation:none}}
 .brand{font-family:'Baloo Bhaijaan 2',Tahoma,sans-serif}.brand span{color:#f25c9c}
+
+/* Vehicle picker (home and AR intro): two candy pills, the chosen one filled. */
+.car-pick{display:flex;gap:8px;margin:0 0 16px}
+.car-pick button{flex:1;font-family:'Baloo Bhaijaan 2',Tahoma,sans-serif;font-weight:800;font-size:13px;color:#a8245f;padding:9px 6px;border-radius:999px;border:2px solid #fff;
+  background:linear-gradient(180deg,#fff,#ffe3ee);box-shadow:0 3px 0 #ffc6dc}
+.car-pick button[aria-pressed=true]{color:#fff;background:linear-gradient(180deg,#ffffff66 0,#fff0 50%),linear-gradient(180deg,#ff9fc6,#f25c9c);box-shadow:0 3px 0 #d93d82;text-shadow:0 1px 2px #a8245f88}

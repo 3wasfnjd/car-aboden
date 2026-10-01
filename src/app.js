@@ -8,6 +8,7 @@ import { loadVehicleModel } from './models.js';
 import { FlowerEffects } from './flowers.js';
 import { applyRosePaint } from './paint.js';
 import { addCuteDecor } from './decor.js';
+import { VEHICLES, vehicleChoice, mountVehiclePicker } from './choice.js';
 export async function boot() {
   const $=id=>document.getElementById(id),canvas=$('view');
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
@@ -27,23 +28,28 @@ export async function boot() {
   function resetCar(){input.reset();car.reset();accumulator=0;cameraTarget.copy(car.body.position);notify('عادت السيارة إلى نقطة البداية');}
   function showMenu(){running=false;paused=true;input.setEnabled(false);$('intro').hidden=false;$('hud').hidden=true;$('settings').hidden=true;$('start').textContent='نكمل المشوار 🌸';}
   const input=new InputController(resetCar,()=>running?showMenu():start());input.setEnabled(false);
+  const vehicle=vehicleChoice();mountVehiclePicker($('carPick'));
   let modelStatus={loaded:false};
   // Finish model/rig installation before accepting driving input. Failed model
   // downloads remain visible as a warning, never a silent successful replacement.
   if(!window.MOTRI_SINGLE_FILE){
-    $('loadState').textContent='تحميل سيارة GMC وتجهيز العجلات…';
-    try {modelStatus=await loadVehicleModel(visual,'models/vehicle.json',car);}
+    $('loadState').textContent=vehicle==='van'?'نجهّز شاحنة الورد…':'نجهّز جود والورد…';
+    try {modelStatus=await loadVehicleModel(visual,'models/'+VEHICLES[vehicle].config,car);}
     catch(e){console.warn(e);modelStatus={loaded:false,error:e.message};}
   }
   // Flowers land on the lab's top surface under the drop point.
   let flowers=null;const groundRay=new THREE.Raycaster(),downRay=new THREE.Vector3(0,-1,0),rayOrigin=new THREE.Vector3();
   const groundAt=(x,z)=>{groundRay.set(rayOrigin.set(x,20,z),downRay);const hit=groundRay.intersectObjects(lab.meshes,false)[0];return hit?hit.point.y:0;};
   // Pink paint, painted roses and a procedural bouquet in the bed.
-  try{modelStatus.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual,ground:groundAt});
-    const decor=addCuteDecor(visual,flowers.bed);flowers.setCanopy(decor.canopy);modelStatus.decor={canopy:!!decor.canopy,sign:!!decor.sign};}catch(e){console.warn(e);}
+  // The GMC gets the paint, awning and bed bouquet; the van already has them.
+  try{
+    if(visual.modelEmit)flowers=new FlowerEffects({visual,ground:groundAt,emit:visual.modelEmit});
+    else{modelStatus.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual,ground:groundAt});
+      const decor=addCuteDecor(visual,flowers.bed);flowers.setCanopy(decor.canopy);modelStatus.decor={canopy:!!decor.canopy,sign:!!decor.sign};}
+  }catch(e){console.warn(e);}
   function start(){if(dead)return;running=true;paused=false;everStarted=true;input.setEnabled(true);last=performance.now();accumulator=0;$('intro').hidden=true;$('hud').hidden=false;}
   $('start').disabled=false;$('start').textContent='يلّا ننطلق 🌸';
-  $('loadState').textContent=modelStatus.loaded?'جود جاهزة • الورد بالحوض 🌹':modelStatus.error?'تعذر تحميل GMC؛ السيارة المؤقتة متاحة: '+modelStatus.error:'جاهزة للتجربة • بدون كاميرا';
+  $('loadState').textContent=modelStatus.loaded?(vehicle==='van'?'شاحنة الورد جاهزة 🌷':'جود جاهزة • الورد بالحوض 🌹'):modelStatus.error?'تعذر تحميل GMC؛ السيارة المؤقتة متاحة: '+modelStatus.error:'جاهزة للتجربة • بدون كاميرا';
   $('speedLimit').max='20';$('speedLimit').value=String(CONFIG.maxSpeed);$('speedValue').textContent=CONFIG.maxSpeed.toFixed(1);
   $('start').addEventListener('click',start);$('pause').addEventListener('click',showMenu);$('reset').addEventListener('click',resetCar);
   $('precision').addEventListener('click',()=>{input.precision=!input.precision;$('precision').setAttribute('aria-pressed',String(input.precision));$('precision').textContent=input.precision?'قيادة دقيقة: مفعّلة':'قيادة دقيقة';notify(input.precision?'سرعة منخفضة للتحكم قرب العقبات':'القيادة العادية');});

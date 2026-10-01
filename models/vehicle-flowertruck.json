@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "profile": "tripo-flower-truck",
+  "model": "flower_truck_light.glb",
+  "length": 4.4,
+  "credits": "CREDITS.md"
+}

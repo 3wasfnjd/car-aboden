@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { prepareGmcModel, installGmcModel } from './gmc.js';
+import { prepareFlowerTruckModel } from './tripo.js';
 
 // The red upload already has four straight, pivoted wheels. Do not run the
 // original merged-mesh splitter on it or recolor its shared trim/tire material.
@@ -59,6 +60,11 @@ export async function loadVehicleModel(visual, configURL='models/vehicle.json', 
   const base=new URL(configURL,location.href),loader=new GLTFLoader();
   const resolve=path=>new URL(path,base).href;
   const load=async(path)=>{const {scene}=await loader.loadAsync(resolve(path));scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});return scene;};
+  if(cfg.profile==='tripo-flower-truck'){
+    if(!cfg.model)throw new Error('حدد ملف شاحنة الورد');
+    const prepared=prepareFlowerTruckModel(await load(cfg.model),{length:Number(cfg.length)||4.4,wheelLocalY:car?car.params.wheelY-car.params.restLength:-.2});
+    const info=installGmcModel(visual,car,prepared);visual.modelEmit=prepared.emit;return info;
+  }
   if(cfg.profile==='gmc-sierra-work-truck'||cfg.profile==='gmc-sierra-red-light'){
     if(!cfg.model)throw new Error('حدد ملف GMC');
     const source=await load(cfg.model);

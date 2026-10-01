@@ -246,9 +246,11 @@ class Sparkles {
 }
 
 export class FlowerEffects {
-  constructor({visual,ground=()=>0}) {
-    this.visual=visual;this.ground=ground;this.enabled=true;this.petalEmit=0;
-    this.bed=findBed(visual);this.canopy=null;
+  // emit: optional {min,max,push,roofY} box in the car's frame for vehicles
+  // without an open bed (the flower-truck van blows petals out of its window).
+  constructor({visual,ground=()=>0,emit=null}) {
+    this.visual=visual;this.ground=ground;this.enabled=true;this.petalEmit=0;this.emit=emit;
+    this.bed=emit?null:findBed(visual);this.canopy=null;
     this.bouquet=this.bed?new BedBouquet(visual.root,this.bed):null;
     this.petals=new PetalStorm(visual.root.parent);
     this.sparkles=new Sparkles(visual.root.parent);this.sparkleEmit=0;
@@ -259,19 +261,30 @@ export class FlowerEffects {
   setCanopy(canopy){this.canopy=canopy||null;}
   // speed: signed forward speed; velocity: chassis velocity in parent space.
   update(dt,{speed=0,maxSpeed=14,velocity=null}={}) {
-    if(this.enabled&&this.bed&&Math.abs(speed)>.8){
+    const source=this.bed||this.emit;
+    if(this.enabled&&source&&Math.abs(speed)>.8){
       this.petalEmit+=dt*(14+70*Math.min(1,Math.abs(speed)/maxSpeed));
       while(this.petalEmit>=1){this.petalEmit-=1;this.spawnPetal(velocity);}
     }else this.petalEmit=0;
     // Crystals: a faint shimmer over the bouquet at rest, a stream with the petals.
-    if(this.enabled&&this.bed){
+    if(this.enabled&&source){
       const moving=Math.abs(speed)>.8,pace=Math.min(1,Math.abs(speed)/maxSpeed);
       this.sparkleEmit+=dt*(moving?10+45*pace:3);
       while(this.sparkleEmit>=1){this.sparkleEmit-=1;this.spawnSparkle(moving?velocity:null);}
     }else this.sparkleEmit=0;
     this.petals.update(dt);this.sparkles.update(dt);
   }
+  fromWindow(r,velocity,petal) {
+    const root=this.visual.root,e=this.emit;
+    const local=petal||r()<.5?new THREE.Vector3(e.min.x+(e.max.x-e.min.x)*r(),e.min.y+(e.max.y-e.min.y)*r(),e.min.z+(e.max.z-e.min.z)*r())
+      :new THREE.Vector3((r()-.5)*2*e.max.x,e.roofY+.05+r()*.35,e.min.z+(e.max.z-e.min.z)*r());
+    const v=new THREE.Vector3().addScaledVector(e.push,petal?1.4+r()*1.6:.3+r()*.6);v.x+=(r()-.5)*.6;v.y+=petal?.5+r()*1.1:.3+r()*1.2;v.z+=(r()-.5)*1.2;
+    v.applyQuaternion(root.quaternion).addScaledVector(new THREE.Vector3(0,0,-1).applyQuaternion(root.quaternion),.4+r()*.8);
+    if(velocity)v.addScaledVector(velocity,petal?.85:.8);
+    return {p:local.applyQuaternion(root.quaternion).add(root.position),v};
+  }
   spawnPetal(velocity) {
+    if(this.emit){const r=Math.random,{p,v}=this.fromWindow(r,velocity,true);this.petals.emit(p.x,p.y,p.z,v.x,v.y,v.z,this.ground(p.x+v.x*.35,p.z+v.z*.35));return;}
     const root=this.visual.root,{min,max,floor}=this.bed,r=Math.random,c=this.canopy;
     // Lift off the top of the bouquet anywhere in the bed, or out of the back under a canopy.
     const local=c?new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.45+r()*.35,min.z+r()*.3):new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.6+r()*.25,min.z+(max.z-min.z)*r());
@@ -282,6 +295,7 @@ export class FlowerEffects {
     this.petals.emit(p.x,p.y,p.z,v.x,v.y,v.z,this.ground(p.x+v.x*.35,p.z+v.z*.35));
   }
   spawnSparkle(velocity) {
+    if(this.emit){const {p,v}=this.fromWindow(Math.random,velocity,false);this.sparkles.emit(p.x,p.y,p.z,v.x,v.y,v.z);return;}
     const root=this.visual.root,{min,max,floor}=this.bed,r=Math.random,c=this.canopy;
     const local=!c?new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.55+r()*.45,min.z+(max.z-min.z)*r())
       :r()<.5?new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.45+r()*.4,min.z+r()*.3)
