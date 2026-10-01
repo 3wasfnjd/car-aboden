@@ -1,7 +1,9 @@
-// Cute flower-cart decor, all procedural: a pink/white striped canopy over the
-// bed with a scalloped fringe, pearl-white arches with bows, and a roof sign.
+// Cute flower-truck decor, all procedural: a flat pink/white striped awning
+// over the bed with a scalloped skirt, pearl posts, warm bulbs, rose bunches
+// and a roof sign.
 // Geometry is in the car's local frame (same as the bed from FlowerEffects).
 import * as THREE from 'three';
+import { roseHead, petalGeometry } from './flowers.js';
 
 const PINK='#ff8fbf',WHITE='#fff7fb',ROSE='#e2457f';
 
@@ -39,42 +41,57 @@ export function addCuteDecor(visual,bed,{signText='جوري'}={}) {
     pink:new THREE.MeshStandardMaterial({color:PINK,roughness:.5,side:THREE.DoubleSide}),
     white:new THREE.MeshStandardMaterial({color:WHITE,roughness:.5,side:THREE.DoubleSide}),
     pearl:new THREE.MeshStandardMaterial({color:'#fffafd',roughness:.22,metalness:.15}),
-    bow:new THREE.MeshStandardMaterial({color:'#ff5c9c',roughness:.45}),
     sign:new THREE.MeshStandardMaterial({map:signTexture(signText),transparent:true,roughness:.45,side:THREE.FrontSide}),
   };
   const add=(geometry,material)=>{const m=new THREE.Mesh(geometry,material);m.castShadow=true;m.receiveShadow=true;group.add(m);return m;};
   const info={};
+  // Little rose bunches (as on the reference truck's sign and awning corners).
+  const roseGeo=roseHead(),leafGeo=petalGeometry(.55,1.3,1.6);
+  const roseMats=['#ff9fc6','#ffc1d9','#ff7cb1'].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.5,side:THREE.DoubleSide}));
+  const leafMat=new THREE.MeshStandardMaterial({color:'#5fae5a',roughness:.6,side:THREE.DoubleSide});
+  Object.assign(mats,{leaf:leafMat,rose0:roseMats[0],rose1:roseMats[1],rose2:roseMats[2]});
+  const bunch=(x,y,z,s=1)=>{
+    const g=new THREE.Group();g.position.set(x,y,z);g.scale.setScalar(s);group.add(g);
+    [[0,0,0,.95],[.13,-.03,.05,.75],[-.12,-.04,-.04,.7]].forEach(([dx,dy,dz,k],i)=>{
+      const m=new THREE.Mesh(roseGeo,roseMats[i]);m.position.set(dx,dy,dz);m.scale.setScalar(k*.62);m.rotation.set(-.35+i*.2,i*1.3,.2*i);m.castShadow=true;g.add(m);});
+    for(let i=0;i<3;i++){const a=i*2.1+.4,l=new THREE.Mesh(leafGeo,leafMat);l.scale.setScalar(.38);l.rotation.set(0,a,0);l.rotateX(1.25);l.position.set(Math.sin(a)*.1,-.07,Math.cos(a)*.1);g.add(l);}
+    return g;
+  };
   if(bed){
-    const W=bed.max.x-bed.min.x+.3,L=bed.max.z-bed.min.z+.3,cx=(bed.min.x+bed.max.x)/2,cz=(bed.min.z+bed.max.z)/2;
-    const rail=bed.floor+.38,eave=bed.floor+1.12,rise=.34;
-    // Circular arch through both eaves and the ridge.
-    const R=(W*W/4+rise*rise)/(2*rise),archY=x=>eave+Math.sqrt(Math.max(0,R*R-x*x))-(R-rise);
-    const canopy=new THREE.PlaneGeometry(W,L,28,1),p=canopy.attributes.position;
-    for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getY(i);p.setXYZ(i,cx+x,archY(x),cz+z);}
-    canopy.computeVertexNormals();add(canopy,mats.canopy);
-    // Scalloped fringe hanging from both long edges and the back edge.
-    const sc=.075,scallop=new THREE.CircleGeometry(sc,12,Math.PI,Math.PI);
-    const n=Math.max(4,Math.round(L/(sc*2)));
-    for(const side of [-1,1])for(let i=0;i<n;i++){
-      const m=add(scallop,i%2?mats.white:mats.pink);
-      m.position.set(cx+side*W/2,eave+.005,cz-L/2+(i+.5)*L/n);m.rotation.y=Math.PI/2;
+    // Flat rectangular awning sized to the bed, sloping gently to the back,
+    // with a scalloped skirt whose tabs line up with the stripes (reference truck).
+    const nb=10,W=bed.max.x-bed.min.x+.24,L=bed.max.z-bed.min.z+.1,cx=(bed.min.x+bed.max.x)/2,cz=(bed.min.z+bed.max.z)/2;
+    const rail=bed.floor+.38,rearZ=cz-L/2,frontZ=cz+L/2,yRear=bed.floor+1.08,yFront=bed.floor+1.22;
+    const roofY=z=>yRear+(z-rearZ)/L*(yFront-yRear);
+    mats.canopy.map.dispose();mats.canopy.map=stripeTexture(nb);
+    const roof=new THREE.PlaneGeometry(W,L,1,1),p=roof.attributes.position;
+    for(let i=0;i<p.count;i++){const x=p.getX(i),z=cz+p.getY(i);p.setXYZ(i,cx+x,roofY(z),z);}
+    roof.computeVertexNormals();add(roof,mats.canopy);
+    const tw=W/nb,skirt=.09;
+    const tab=new THREE.Shape();tab.moveTo(-tw/2,0);tab.lineTo(tw/2,0);tab.lineTo(tw/2,-skirt);tab.absarc(0,-skirt,tw/2,0,Math.PI,true);tab.lineTo(-tw/2,0);
+    const tabGeo=new THREE.ShapeGeometry(tab,10);
+    for(let i=0;i<nb;i++){const m=add(tabGeo,i%2?mats.white:mats.pink);m.position.set(cx-W/2+(i+.5)*tw,yRear+.002,rearZ);m.rotation.y=Math.PI;}
+    const ns=Math.max(4,Math.round(L/tw)),ts=L/ns;
+    const sideTab=new THREE.Shape();sideTab.moveTo(-ts/2,0);sideTab.lineTo(ts/2,0);sideTab.lineTo(ts/2,-skirt);sideTab.absarc(0,-skirt,ts/2,0,Math.PI,true);sideTab.lineTo(-ts/2,0);
+    const sideGeo=new THREE.ShapeGeometry(sideTab,10);
+    for(const side of [-1,1])for(let i=0;i<ns;i++){
+      const z=rearZ+(i+.5)*ts,m=add(sideGeo,i%2?mats.white:mats.pink);
+      m.position.set(cx+side*W/2,roofY(z)+.002,z);m.rotation.y=side*Math.PI/2;
     }
-    const nb=Math.max(4,Math.round(W/(sc*2)));
-    for(let i=0;i<nb;i++){
-      const x=-W/2+(i+.5)*W/nb,m=add(scallop,i%2?mats.pink:mats.white);
-      m.position.set(cx+x,archY(x)+.005,cz-L/2);m.rotation.y=Math.PI;
+    // Pearl corner posts.
+    for(const sx of [-1,1])for(const z of [rearZ+.05,frontZ-.05]){
+      const h=roofY(z)-rail;add(new THREE.CylinderGeometry(.026,.026,h,8),mats.pearl).position.set(cx+sx*(W/2-.05),rail+h/2,z);
     }
-    // Three pearl arches (حنايا) from rail to rail, each with a bow on top.
-    const bowGeo=new THREE.SphereGeometry(.07,12,8).scale(1.5,.8,.6),knot=new THREE.SphereGeometry(.04,10,8);
-    for(const t of [.06,.5,.94]){
-      const z=cz-L/2+L*t,pts=[new THREE.Vector3(cx-W/2+.04,rail,z)];
-      for(let k=0;k<=12;k++){const x=-W/2+.04+(W-.08)*k/12;pts.push(new THREE.Vector3(cx+x,archY(x)-.03,z));}
-      pts.push(new THREE.Vector3(cx+W/2-.04,rail,z));
-      add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),60,.028,8),mats.pearl);
-      for(const s of [-1,1]){const b=add(bowGeo,mats.bow);b.position.set(cx+s*.08,eave+rise+.05,z);b.rotation.z=s*.35;}
-      add(knot,mats.bow).position.set(cx,eave+rise+.05,z);
+    // Warm bulbs hanging under the back edge.
+    const bulbMat=new THREE.MeshStandardMaterial({color:'#fff4d6',emissive:'#ffcc66',emissiveIntensity:1.6,roughness:.3});mats.bulb=bulbMat;
+    const wire=new THREE.CylinderGeometry(.006,.006,.08,4),bulb=new THREE.SphereGeometry(.045,12,10),cap=new THREE.CylinderGeometry(.022,.022,.03,8);
+    for(const t of [.2,.4,.6,.8]){
+      const x=cx-W/2+W*t,z=rearZ+.12,top=roofY(z);
+      add(wire,mats.pearl).position.set(x,top-.04,z);add(cap,mats.pearl).position.set(x,top-.09,z);
+      const b=add(bulb,bulbMat);b.position.set(x,top-.13,z);b.castShadow=false;
     }
-    info.canopy={top:eave+rise,eave,rearZ:cz-L/2,frontZ:cz+L/2,minX:cx-W/2,maxX:cx+W/2};
+    bunch(cx-W/2+.02,yRear+.04,rearZ+.02,1);bunch(cx+W/2-.02,yRear+.04,rearZ+.02,1);
+    info.canopy={top:yFront,eave:yRear,rearZ,frontZ,minX:cx-W/2,maxX:cx+W/2};
   }
   // Roof sign across the car's width, readable from the front and the back.
   const body=visual.bodyMount.getObjectByName('GMC_Body'),glass=visual.bodyMount.getObjectByName('GMC_Glass');
@@ -90,6 +107,7 @@ export function addCuteDecor(visual,bed,{signText='جوري'}={}) {
     for(const side of [1,-1]){const m=add(face,mats.sign);m.position.set(0,y,z+side*.012);m.rotation.y=side>0?0:Math.PI;}
     add(new THREE.ShapeGeometry(roundedRect(w+.04,h+.04,h*.47),8),mats.pink).position.set(0,y,z);
     for(const dx of [-w*.3,w*.3])add(new THREE.CylinderGeometry(.024,.024,.17,8),mats.pearl).position.set(dx,roof+.085,z);
+    bunch(-w/2,y+h*.35,z,1.15);bunch(w/2,y+h*.35,z,1.15);
     info.sign={y,z};
   }
   visual.root.add(group);

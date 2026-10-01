@@ -35,7 +35,7 @@ function ringPetal(base,{angle,radius,tilt,scale,y=0}) {
     .rotateX(tilt).translate(0,y,radius).rotateY(angle);
 }
 
-function roseHead() {
+export function roseHead() {
   const base=petalGeometry(1,1,2.6),parts=[];
   const rings=[[3,.42,.012,.12,.06],[5,.62,.04,.42,.03],[6,.82,.075,.8,.01],[8,1,.11,1.18,-.01]];
   rings.forEach(([n,scale,radius,tilt,y],r)=>{for(let i=0;i<n;i++)parts.push(ringPetal(base,{angle:(i+r*.5)/n*Math.PI*2,radius,tilt,scale,y}));});
