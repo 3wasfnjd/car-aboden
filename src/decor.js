@@ -76,7 +76,7 @@ export function addCuteDecor(visual,bed,{signText='جوري'}={}) {
     }
     info.canopy={top:eave+rise,eave,rearZ:cz-L/2,frontZ:cz+L/2,minX:cx-W/2,maxX:cx+W/2};
   }
-  // Roof sign facing both sides of the car, on two pearl posts.
+  // Roof sign across the car's width, readable from the front and the back.
   const body=visual.bodyMount.getObjectByName('GMC_Body'),glass=visual.bodyMount.getObjectByName('GMC_Glass');
   if(body&&glass){
     const saved=[visual.root.position.clone(),visual.root.quaternion.clone()];
@@ -85,11 +85,11 @@ export function addCuteDecor(visual,bed,{signText='جوري'}={}) {
     const hit=new THREE.Raycaster(new THREE.Vector3(0,cab.max.y+3,z),new THREE.Vector3(0,-1,0)).intersectObject(body,true)[0];
     const roof=hit?hit.point.y:cab.max.y;
     visual.root.position.copy(saved[0]);visual.root.quaternion.copy(saved[1]);visual.root.updateMatrixWorld(true);
-    const w=1.25,h=w*192/512,y=roof+.14+h/2;
+    const w=1.55,h=w*192/512,y=roof+.15+h/2;
     const face=normalizeUV(new THREE.ShapeGeometry(roundedRect(w,h,h*.45),8),w,h);
-    for(const side of [1,-1]){const m=add(face,mats.sign);m.position.set(side*.012,y,z);m.rotation.y=side*Math.PI/2;}
-    const back=add(new THREE.ShapeGeometry(roundedRect(w+.03,h+.03,h*.47),8),mats.pink);back.position.set(0,y,z);back.rotation.y=Math.PI/2;back.scale.z=1;
-    for(const dz of [-w*.3,w*.3])add(new THREE.CylinderGeometry(.022,.022,.16,8),mats.pearl).position.set(0,roof+.08,z+dz);
+    for(const side of [1,-1]){const m=add(face,mats.sign);m.position.set(0,y,z+side*.012);m.rotation.y=side>0?0:Math.PI;}
+    add(new THREE.ShapeGeometry(roundedRect(w+.04,h+.04,h*.47),8),mats.pink).position.set(0,y,z);
+    for(const dx of [-w*.3,w*.3])add(new THREE.CylinderGeometry(.024,.024,.17,8),mats.pearl).position.set(dx,roof+.085,z);
     info.sign={y,z};
   }
   visual.root.add(group);

@@ -44,6 +44,9 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
 #menu{position:absolute;top:calc(max(12px,env(safe-area-inset-top)) + 50px);right:max(12px,env(safe-area-inset-right));pointer-events:auto;display:flex;flex-direction:column;gap:6px;background:#10201ad9;border-radius:16px;padding:8px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 #menu button{border:0;border-radius:11px;background:#ffffff14;color:#fff;font-size:13px;padding:11px 14px;text-align:right;min-width:150px}
 #menu button[aria-pressed=false]{opacity:.5}
+#menu .menu-size{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px}
+#menu .menu-size button{min-width:0;width:44px;height:40px;padding:0;text-align:center;font-size:22px}
+#menu .menu-size output{flex:1;text-align:center;font-family:var(--cute);font-weight:800;font-size:15px;color:var(--p700)}
 #arStatus{top:max(16px,env(safe-area-inset-top))}
 #hud .steering-wrap{opacity:.88}#hud .steering-wrap small,#hud .lever-label{display:none}
 #hud .right-controls{width:auto}#hud .pedals{justify-content:flex-end}
@@ -120,10 +123,11 @@ body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);backgrou
     <button id="reset">🔄 إعادة السيارة</button>
     <button id="move">📍 نقل السيارة</button>
     <button id="flowersBtn" aria-pressed="true">🌸 الورود والبلورات</button>
+    <div class="menu-size" aria-label="حجم السيارة"><button id="sizeDown2" aria-label="تصغير السيارة">−</button><output id="sizeValue2">1 م</output><button id="sizeUp2" aria-label="تكبير السيارة">+</button></div>
   </div>
   <div id="arStatus" role="status"><span class="status-dot"></span><span id="statusText">تشغيل الكاميرا…</span></div>
   <section id="placement">
-    <div class="size" aria-label="حجم السيارة"><button id="sizeDown" class="candy" aria-label="تصغير">−</button><output id="sizeValue">35 سم</output><button id="sizeUp" class="candy" aria-label="تكبير">+</button></div>
+    <div class="size" aria-label="حجم السيارة"><button id="sizeDown" class="candy" aria-label="تصغير">−</button><output id="sizeValue">1 م</output><button id="sizeUp" class="candy" aria-label="تكبير">+</button></div>
     <button id="placeBtn" class="candy" disabled>🌸 ثبّت السيارة هنا</button>
   </section>
   <div class="drive-controls" id="driveControls" hidden>
@@ -213,12 +217,13 @@ window.visualViewport?.addEventListener('scroll',syncViewport,{passive:true});
 // No floor is drawn: an invisible collider holds the car, and a shadow-only
 // plane gives contact with the real ground.
 const $=id=>document.getElementById(id);
-const SIZES=[.20,.25,.30,.35,.45,.60,.80];
+// Car length in metres: toy sizes up to the truck's real size (about 5.2 m).
+const SIZES=[.30,.45,.60,.80,1,1.3,1.7,2.2,3,4,5.2];
 const SPAWN=[0,.72,0];
 const MAX_DISTANCE=120;
 // Same top speed as the game lab: about 0.95 m/s at the default 35 cm size.
 const AR_MAX_SPEED=14;
-let sizeIndex=3,carLength=5,placed=false,sceneReady=false,xrReady=false,xrStarted=false,failed=false;
+let sizeIndex=4,carLength=5,placed=false,sceneReady=false,xrReady=false,xrStarted=false,failed=false;
 let scene,camera,renderer,anchor,visual,car,input,world,sun,shadowPlane,reticle,flowers=null;
 let trackingNormalSince=null,trackingLastSeen=-Infinity,trackingStatus='LIMITED';
 let lastTick=0,accumulator=0,stableSince=null,toastTimer=0;
@@ -241,7 +246,17 @@ function smoothInput(raw,dt){
 }
 const fail=message=>{failed=true;sceneReady=false;$('arIntro').hidden=false;$('arError').style.display='block';$('arError').textContent=message;$('startBtn').disabled=false;$('startBtn').textContent='إعادة تحميل الصفحة';};
 const scale=()=>SIZES[sizeIndex]/carLength;
-function showSize(){$('sizeValue').textContent=`${Math.round(SIZES[sizeIndex]*100)} سم`;if(anchor)anchor.scale.setScalar(scale());}
+const sizeLabel=m=>m>=1?`${Number(m.toFixed(1))} م`:`${Math.round(m*100)} سم`;
+const pinA=new THREE.Vector3(),pinB=new THREE.Vector3();
+function showSize(){
+  for(const id of ['sizeValue','sizeValue2'])$(id).textContent=sizeLabel(SIZES[sizeIndex]);
+  if(!anchor)return;
+  if(!placed){anchor.scale.setScalar(scale());return;}
+  // While driving, resize around the car so it stays where it is on the floor.
+  visual.root.getWorldPosition(pinA);anchor.scale.setScalar(scale());anchor.updateMatrixWorld(true);
+  visual.root.getWorldPosition(pinB);anchor.position.x+=pinA.x-pinB.x;anchor.position.z+=pinA.z-pinB.z;
+}
+function resize(step){const next=Math.min(SIZES.length-1,Math.max(0,sizeIndex+step));if(next===sizeIndex)return;sizeIndex=next;showSize();}
 
 function trackingReady(now){return trackingStatus==='NORMAL'&&trackingNormalSince!==null&&now-trackingNormalSince>=800&&now-trackingLastSeen<=250;}
 
@@ -380,8 +395,7 @@ $('move').addEventListener('click',()=>{showMenu(false);move();});
 $('menuBtn').addEventListener('click',()=>showMenu($('menu').hidden));
 $('flowersBtn').addEventListener('click',()=>{showMenu(false);if(!flowers)return;flowers.enabled=!flowers.enabled;$('flowersBtn').setAttribute('aria-pressed',String(flowers.enabled));notify(flowers.enabled?'الورود والبلورات تعمل':'توقف نثر الورود والبلورات');});
 $('reset').addEventListener('click',()=>{showMenu(false);resetCar();notify('رجعت السيارة لمكانها');});
-$('sizeDown').addEventListener('click',()=>{sizeIndex=Math.max(0,sizeIndex-1);showSize();});
-$('sizeUp').addEventListener('click',()=>{sizeIndex=Math.min(SIZES.length-1,sizeIndex+1);showSize();});
+for(const [id,step] of [['sizeDown',-1],['sizeUp',1],['sizeDown2',-1],['sizeUp2',1]])$(id).addEventListener('click',()=>resize(step));
 $('exitAr').addEventListener('click',()=>{try{XR8.stop();}catch{}location.href='../';});
 document.addEventListener('visibilitychange',()=>{trackingNormalSince=null;lastTick=performance.now();input?.reset();stopDrive();});
 $('fwdBtn').addEventListener('pointerdown',e=>{e.preventDefault();if(!placed)return;setCruise(!cruise);if(cruise){reversing=false;$('revBtn').classList.remove('active');}});
