@@ -62,7 +62,9 @@ export class Room extends DurableObject<Env> {
           message: `${name} دخل اللعبة (${room}) · ${players} ${players === 1 ? "لاعب" : "لاعبين"} الحين`,
           tags: ["cherry_blossom"],
         }),
-      }).catch(() => {}),
+      })
+        .then(async (r) => console.log(`ntfy ${r.status}`, r.ok ? "" : (await r.text()).slice(0, 300)))
+        .catch((e) => console.log("ntfy failed", String(e))),
     );
   }
 

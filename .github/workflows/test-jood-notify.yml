@@ -1,0 +1,44 @@
+name: Test Jood join notification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install tools
+        working-directory: tools/jood-multiplayer
+        run: npm install --ignore-scripts --no-audit --no-fund && npm install --no-save ws
+      - name: Join a room while watching the Worker logs and the ntfy topic
+        working-directory: tools/jood-multiplayer
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "Topic set: $([ -n "$NTFY_TOPIC" ] && echo yes || echo NO)"
+          echo "--- direct publish from the runner:"
+          curl -sS -H "Content-Type: application/json" -d "{\"topic\":\"$NTFY_TOPIC\",\"title\":\"جود 🌸\",\"message\":\"تجربة من GitHub\"}" https://ntfy.sh/ | head -c 300; echo
+          npx wrangler tail jood-multiplayer --format pretty > tail.log 2>&1 &
+          sleep 12
+          node -e '
+            const WebSocket=require("ws");
+            const ws=new WebSocket("wss://jood-multiplayer.3wasf-njd1.workers.dev/room/JOODTEST?name="+encodeURIComponent("اختبار "+Date.now()%1000)+"&car=van",{origin:"https://3wasfnjd.github.io"});
+            ws.on("open",()=>console.log("socket open"));
+            ws.on("message",m=>console.log("got",String(m).slice(0,200)));
+            ws.on("unexpected-response",(q,r)=>console.log("refused",r.statusCode));
+            ws.on("error",e=>console.log("error",e.message));
+            setTimeout(()=>{ws.close();process.exit(0)},4000);'
+          sleep 10
+          echo "--- worker logs:"; cat tail.log
+          echo "--- ntfy messages in the last 5 minutes:"
+          curl -sS "https://ntfy.sh/$NTFY_TOPIC/json?poll=1&since=5m" | sed "s/$NTFY_TOPIC/<topic>/g"
