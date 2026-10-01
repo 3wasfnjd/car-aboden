@@ -5,7 +5,7 @@ await rm(dist,{recursive:true,force:true});await mkdir(dist,{recursive:true});
 for(const name of ['index.html','style.css','src','models','ar','NOTICE.md','LICENSE'])await cp(new URL(name,root),new URL(name,dist),{recursive:true});
 await writeFile(new URL('.nojekyll',dist),'');
 let combined="window.MOTRI_SINGLE_FILE=true;\nimport * as THREE from 'three';\nimport * as CANNON from 'cannon-es';\nimport { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';\nimport { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';\n";
-for(const name of ['core','vehicle','visuals','world','gmc','models','flowers','paint','input','app']) {
+for(const name of ['core','vehicle','visuals','world','gmc','models','flowers','paint','decor','input','app']) {
  const source=await readFile(new URL('src/'+name+'.js',root),'utf8');
  const names=[...source.matchAll(/^export\s+(?:async\s+)?(?:function|class|const)\s+(\w+)/gm)].map(m=>m[1]);
  const body=source.replace(/^import\s+[^;]+;\s*$/gm,'').replace(/^export\s+/gm,'');

@@ -246,12 +246,15 @@ class Sparkles {
 export class FlowerEffects {
   constructor({visual,ground=()=>0}) {
     this.visual=visual;this.ground=ground;this.enabled=true;this.petalEmit=0;
-    this.bed=findBed(visual);
+    this.bed=findBed(visual);this.canopy=null;
     this.bouquet=this.bed?new BedBouquet(visual.root,this.bed):null;
     this.petals=new PetalStorm(visual.root.parent);
     this.sparkles=new Sparkles(visual.root.parent);this.sparkleEmit=0;
   }
   get hasBed(){return !!this.bed;}
+  // With a canopy over the bed, petals blow out of the open back instead of
+  // passing through the fabric, and crystals also twinkle above its roof.
+  setCanopy(canopy){this.canopy=canopy||null;}
   // speed: signed forward speed; velocity: chassis velocity in parent space.
   update(dt,{speed=0,maxSpeed=14,velocity=null}={}) {
     if(this.enabled&&this.bed&&Math.abs(speed)>.8){
@@ -267,17 +270,21 @@ export class FlowerEffects {
     this.petals.update(dt);this.sparkles.update(dt);
   }
   spawnPetal(velocity) {
-    const root=this.visual.root,{min,max,floor}=this.bed,r=Math.random;
-    // Lift off the top of the bouquet anywhere in the bed.
-    const p=new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.6+r()*.25,min.z+(max.z-min.z)*r()).applyQuaternion(root.quaternion).add(root.position);
-    const v=new THREE.Vector3((r()-.5)*2.2,1.6+r()*2.2,(r()-.5)*2.2);
-    v.addScaledVector(new THREE.Vector3(0,0,-1).applyQuaternion(root.quaternion),.6+r()*.8);
+    const root=this.visual.root,{min,max,floor}=this.bed,r=Math.random,c=this.canopy;
+    // Lift off the top of the bouquet anywhere in the bed, or out of the back under a canopy.
+    const local=c?new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.45+r()*.35,min.z+r()*.3):new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.6+r()*.25,min.z+(max.z-min.z)*r());
+    const p=local.applyQuaternion(root.quaternion).add(root.position);
+    const v=c?new THREE.Vector3((r()-.5)*2.4,.5+r()*1.1,(r()-.5)*2.4):new THREE.Vector3((r()-.5)*2.2,1.6+r()*2.2,(r()-.5)*2.2);
+    v.addScaledVector(new THREE.Vector3(0,0,-1).applyQuaternion(root.quaternion),c?1.2+r()*1.2:.6+r()*.8);
     if(velocity)v.addScaledVector(velocity,.85);
     this.petals.emit(p.x,p.y,p.z,v.x,v.y,v.z,this.ground(p.x+v.x*.35,p.z+v.z*.35));
   }
   spawnSparkle(velocity) {
-    const root=this.visual.root,{min,max,floor}=this.bed,r=Math.random;
-    const p=new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.55+r()*.45,min.z+(max.z-min.z)*r()).applyQuaternion(root.quaternion).add(root.position);
+    const root=this.visual.root,{min,max,floor}=this.bed,r=Math.random,c=this.canopy;
+    const local=!c?new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.55+r()*.45,min.z+(max.z-min.z)*r())
+      :r()<.5?new THREE.Vector3(min.x+(max.x-min.x)*r(),floor+.45+r()*.4,min.z+r()*.3)
+      :new THREE.Vector3(c.minX+(c.maxX-c.minX)*r(),c.top+.05+r()*.3,c.rearZ+(c.frontZ-c.rearZ)*r());
+    const p=local.applyQuaternion(root.quaternion).add(root.position);
     const v=new THREE.Vector3((r()-.5)*1.6,.3+r()*1.2,(r()-.5)*1.6);
     if(velocity)v.addScaledVector(new THREE.Vector3(0,0,-1).applyQuaternion(root.quaternion),.4+r()*.6).addScaledVector(velocity,.8);
     this.sparkles.emit(p.x,p.y,p.z,v.x,v.y,v.z);
