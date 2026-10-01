@@ -7,6 +7,9 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
   // Optional ntfy.sh topic (Worker secret): the owner gets a push when someone joins.
   NTFY_TOPIC?: string;
+  // ntfy.sh access token (Worker secret). Without it ntfy limits by IP, and the
+  // IPs Workers share are almost always over that limit (HTTP 429).
+  NTFY_TOKEN?: string;
 }
 
 interface Player {
@@ -55,7 +58,10 @@ export class Room extends DurableObject<Env> {
     this.ctx.waitUntil(
       fetch("https://ntfy.sh/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(this.env.NTFY_TOKEN ? { Authorization: `Bearer ${this.env.NTFY_TOKEN}` } : {}),
+        },
         body: JSON.stringify({
           topic,
           title: "جود 🌸",
