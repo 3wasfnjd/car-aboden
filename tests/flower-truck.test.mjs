@@ -34,6 +34,9 @@ test('four wheels are cut out of the fused mesh and the body keeps the rest',()=
   assert.equal(body+prepared.info.wheelTriangles.reduce((a,c)=>a+c,0),prepared.info.triangles,'no triangle lost or duplicated');
   for(const w of prepared.wheels)assert.ok(Math.abs(w.center.y+.2)<1e-6&&w.radius>.4&&w.radius<.5);
   assert.ok(prepared.emit.push.x>0,'petals blow out of the right-side flower window');
+  const {sign,plate}=prepared.labels;
+  assert.ok(sign.center.y>plate.center.y+2&&sign.center.z>0&&plate.center.z>sign.center.z,'Jood sign covers the roof sign, plate the front bumper');
+  assert.ok(sign.width>1.4&&sign.width<1.9,'sign spans the roof board');
 });
 test('van rests on four wheels, drives, coasts to a stop and reverses',()=>{
   const s=setup();tick(s,240,{throttle:0,steer:0,brake:false});

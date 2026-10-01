@@ -7,7 +7,7 @@ import { InputController } from './input.js';
 import { loadVehicleModel } from './models.js';
 import { FlowerEffects } from './flowers.js';
 import { applyRosePaint } from './paint.js';
-import { addCuteDecor } from './decor.js';
+import { addCuteDecor, addVanLabels } from './decor.js';
 import { VEHICLES, vehicleChoice, mountVehiclePicker } from './choice.js';
 export async function boot() {
   const $=id=>document.getElementById(id),canvas=$('view');
@@ -43,7 +43,7 @@ export async function boot() {
   // Pink paint, painted roses and a procedural bouquet in the bed.
   // The GMC gets the paint, awning and bed bouquet; the van already has them.
   try{
-    if(visual.modelEmit)flowers=new FlowerEffects({visual,ground:groundAt,emit:visual.modelEmit});
+    if(visual.modelEmit){flowers=new FlowerEffects({visual,ground:groundAt,emit:visual.modelEmit});const l=addVanLabels(visual,visual.modelLabels);modelStatus.labels={sign:!!l?.sign,plate:!!l?.plate};}
     else{modelStatus.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual,ground:groundAt});
       const decor=addCuteDecor(visual,flowers.bed);flowers.setCanopy(decor.canopy);modelStatus.decor={canopy:!!decor.canopy,sign:!!decor.sign};}
   }catch(e){console.warn(e);}

@@ -4,6 +4,7 @@
 // Geometry is in the car's local frame (same as the bed from FlowerEffects).
 import * as THREE from 'three';
 import { roseHead, petalGeometry } from './flowers.js';
+import { plateTexture } from './paint.js';
 
 const PINK='#ff8fbf',WHITE='#fff7fb',ROSE='#e2457f';
 
@@ -112,4 +113,24 @@ export function addCuteDecor(visual,bed,{signText='جود'}={}) {
   }
   visual.root.add(group);
   return {group,...info,dispose(){group.removeFromParent();group.traverse(o=>o.geometry?.dispose());Object.values(mats).forEach(m=>{m.map?.dispose();m.dispose();});}};
+}
+
+// The Tripo van has "Flower Truck" / "FLOWER" printed on its sign and plate:
+// cover them with the Jood sign (pink rim) and the Jood plate.
+export function addVanLabels(visual,labels,{signText='جود',plate='جود'}={}) {
+  if(!labels)return null;
+  const group=new THREE.Group();group.name='JoodLabels';
+  const signMat=new THREE.MeshStandardMaterial({map:signTexture(signText),transparent:true,roughness:.45});
+  const rimMat=new THREE.MeshStandardMaterial({color:PINK,roughness:.5});
+  const plateMat=new THREE.MeshStandardMaterial({map:plateTexture(plate),transparent:true,roughness:.4});
+  const {sign,plate:pl}=labels;
+  if(sign){
+    const w=sign.width*1.04,h=sign.height*1.08;
+    const rim=new THREE.Mesh(new THREE.ShapeGeometry(roundedRect(w+.06,h+.06,(h+.06)*.45),8),rimMat);rim.position.copy(sign.center).add(new THREE.Vector3(0,0,.012));
+    const face=new THREE.Mesh(normalizeUV(new THREE.ShapeGeometry(roundedRect(w,h,h*.45),8),w,h),signMat);face.position.copy(sign.center).add(new THREE.Vector3(0,0,.02));
+    group.add(rim,face);
+  }
+  if(pl){const m=new THREE.Mesh(new THREE.PlaneGeometry(pl.width*1.25,pl.height*1.3),plateMat);m.position.copy(pl.center).add(new THREE.Vector3(0,0,.015));group.add(m);}
+  visual.root.add(group);
+  return {group,sign:!!sign,plate:!!pl,dispose(){group.removeFromParent();group.traverse(o=>o.geometry?.dispose());for(const m of [signMat,rimMat,plateMat]){m.map?.dispose();m.dispose();}}};
 }

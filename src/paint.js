@@ -51,7 +51,7 @@ export function flowerVineTexture(width=1024,height=512,tulips=3,seed=1) {
   }
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;
 }
-function plateTexture(text) {
+export function plateTexture(text) {
   const c=document.createElement('canvas');c.width=512;c.height=170;const g=c.getContext('2d');
   g.fillStyle='#fff8f0';g.beginPath();g.roundRect(6,6,500,158,26);g.fill();
   g.lineWidth=10;g.strokeStyle='#f3a9c4';g.stroke();

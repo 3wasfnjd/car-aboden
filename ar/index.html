@@ -191,7 +191,7 @@ import { loadVehicleModel } from '../src/models.js';
 import { VEHICLES, vehicleChoice, mountVehiclePicker } from '../src/choice.js';
 import { FlowerEffects } from '../src/flowers.js';
 import { applyRosePaint } from '../src/paint.js';
-import { addCuteDecor } from '../src/decor.js';
+import { addCuteDecor, addVanLabels } from '../src/decor.js';
 window.THREE=THREE;
 
 function syncViewport(){
@@ -296,7 +296,7 @@ async function setupScene(){
   const box=new THREE.Box3().setFromObject(visual.root);carLength=Math.max(1,box.max.z-box.min.z);
   // The GMC gets pink paint, the awning and a bed bouquet; the van already has
   // them. Petals and crystals drop behind the car onto the AR floor (Y=0).
-  try{if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});}else{status.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual});
+  try{if(visual.modelEmit){flowers=new FlowerEffects({visual,emit:visual.modelEmit});const l=addVanLabels(visual,visual.modelLabels);status.labels={sign:!!l?.sign,plate:!!l?.plate};}else{status.paint=applyRosePaint(visual);flowers=new FlowerEffects({visual});
     const decor=addCuteDecor(visual,flowers.bed);flowers.setCanopy(decor.canopy);status.decor={canopy:!!decor.canopy,sign:!!decor.sign};}}catch(e){console.warn(e);}
   showSize();
   window.__motriAr={car,visual,anchor,status,get flowers(){return flowers;},get placed(){return placed;}};

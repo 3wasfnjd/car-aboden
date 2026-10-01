@@ -6,6 +6,9 @@ import * as THREE from 'three';
 // Measured on the uploaded GLB (model units): tyre contact patches centre at
 // z≈±0.30, wheel centres at |x|≈0.205, tyre radius ≈ 0.105.
 export const FLOWER_TRUCK_WHEELS={centers:[[-.205,.3],[.205,.3],[-.205,-.29],[.205,-.29]],radius:.105,inner:.14};
+// Printed "Flower Truck" roof sign and "FLOWER" plate (front faces, model units),
+// covered at runtime with the Jood sign and plate.
+export const FLOWER_TRUCK_LABELS={sign:{center:[0,.645,.252],width:.38,height:.13},plate:{center:[0,.105,.5],width:.14,height:.055}};
 
 function subset(source,triangles) {
   const index=source.index,remap=new Map(),vertices=[],out=[];
@@ -66,7 +69,9 @@ export function prepareFlowerTruckModel(source,{length=4.4,wheelLocalY=-.2,spec=
   const cabin={half:[bs.x*.34,(cabTop-cabBottom)/2,bs.z*.45],offset:[0,(cabTop+cabBottom)/2,(b.min.z+b.max.z)/2]};
   // Petals blow out of the open flower window on the right (+X) side.
   const emit={min:new THREE.Vector3(bs.x*.26,b.min.y+bs.y*.42,b.min.z+bs.z*.3),max:new THREE.Vector3(bs.x*.34,b.min.y+bs.y*.58,b.min.z+bs.z*.72),push:new THREE.Vector3(1,0,0),roofY:b.max.y};
+  const at=([x,y,z])=>new THREE.Vector3(x*scale+offset.x,y*scale+offset.y,z*scale+offset.z);
+  const labels=Object.fromEntries(Object.entries(FLOWER_TRUCK_LABELS).map(([k,l])=>[k,{center:at(l.center),width:l.width*scale,height:l.height*scale}]));
   const triangles=(index?index.count:p.count)/3;
-  return {body:bodyGroup,wheelMeshes:wheels.map(w=>w.mesh),wheels,shell,cabin,scale,emit,
+  return {body:bodyGroup,wheelMeshes:wheels.map(w=>w.mesh),wheels,shell,cabin,scale,emit,labels,
     info:{name:'Flower Truck',variant:'tripo-flower-truck',length,scale,triangles,wheelCount:4,wheelTriangles:groups.map(g=>g.length),wheelCenters:wheels.map(w=>w.center.toArray()),wheelRadii:wheels.map(w=>w.radius)}};
 }
