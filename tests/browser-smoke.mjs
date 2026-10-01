@@ -40,8 +40,8 @@ try{
     await page.locator('#start').click();await page.waitForFunction(()=>window.__motri.car.contacts===4);
     const controls=await checkDriveControls(page,context);
     await page.locator('#precision').click();assert.equal(await page.locator('#precision').getAttribute('aria-pressed'),'true');
-    const flowerStats=await page.evaluate(()=>({bed:!!window.__motri.flowers?.hasBed,trail:window.__motri.flowers?.trail.used.reduce((a,b)=>a+b,0)??0}));
-    assert.ok(flowerStats.bed&&flowerStats.trail>0,'Flowers fill the bed and drop while driving: '+JSON.stringify(flowerStats));
+    const flowerStats=await page.evaluate(()=>({bed:!!window.__motri.flowers?.hasBed,trail:window.__motri.flowers?.trail.used.reduce((a,b)=>a+b,0)??0,petals:window.__motri.flowers?.petals.used??0}));
+    assert.ok(flowerStats.bed&&flowerStats.petals>0,'Flowers fill the bed and petals scatter while driving: '+JSON.stringify(flowerStats));
     const stats=await page.evaluate(()=>({triangles:window.__motri.renderer.info.render.triangles,contacts:window.__motri.car.contacts,finite:[...window.__motri.car.body.position.toArray(),window.__motri.car.speed].every(Number.isFinite),fatal:!document.querySelector('#fatal').hidden}));
     assert.ok(stats.triangles>0&&stats.finite&&!stats.fatal);await page.screenshot({path:`artifacts/drive-${width}.png`});
     await page.locator('#pause').click();assert.ok(await page.locator('#intro').isVisible());await page.locator('#start').click();assert.ok(await page.locator('#hud').isVisible());
