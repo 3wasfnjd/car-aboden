@@ -13,8 +13,14 @@
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}
 </script>
 <style>
-html,body{background:#05070b}
-#camerafeed{position:fixed!important;left:0!important;top:0!important;width:100vw!important;height:100dvh!important;display:block;z-index:0}
+/* Size the camera canvas from the real visual viewport in px (same fix as
+   AR-Aboden). 100vw/100dvh differs from XR8's drawing size on iPhone and
+   stretches the camera image. */
+:root{--app-w:100vw;--app-h:100dvh}
+html{background:#05070b}
+body{position:fixed;left:0;top:0;width:var(--app-w);height:var(--app-h);background:#05070b}
+#camerafeed{position:fixed!important;left:0!important;top:0!important;right:auto!important;bottom:auto!important;margin:0!important;padding:0!important;width:var(--app-w)!important;height:var(--app-h)!important;min-width:var(--app-w)!important;min-height:var(--app-h)!important;max-width:none!important;max-height:none!important;display:block!important;z-index:0!important;transform:none!important}
+#hud{width:var(--app-w);height:var(--app-h);inset:auto;left:0;top:0}
 #arIntro{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:18px;background:#e3e9daf2;overflow:auto;touch-action:pan-y}
 #arIntro .intro-card{width:min(420px,100%)}
 #arIntro .intro-card h1{font-size:56px;margin:14px 0 6px}
@@ -96,6 +102,26 @@ import { InputController } from '../src/input.js';
 import { loadVehicleModel } from '../src/models.js';
 window.THREE=THREE;
 
+function syncViewport(){
+  const vv=window.visualViewport;
+  const w=Math.round(vv?.width||window.innerWidth||document.documentElement.clientWidth);
+  const h=Math.round(vv?.height||window.innerHeight||document.documentElement.clientHeight);
+  document.documentElement.style.setProperty('--app-w',w+'px');
+  document.documentElement.style.setProperty('--app-h',h+'px');
+  // XR8 may resize the canvas after its own pass; re-apply the CSS size and
+  // keep the Three.js drawing size matched so the camera keeps its aspect.
+  requestAnimationFrame(()=>{
+    const c=document.getElementById('camerafeed');
+    c.style.setProperty('width',w+'px','important');c.style.setProperty('height',h+'px','important');
+    if(renderer)renderer.setSize(w,h,false);
+  });
+}
+syncViewport();
+window.addEventListener('resize',syncViewport,{passive:true});
+window.addEventListener('orientationchange',()=>{setTimeout(syncViewport,80);setTimeout(syncViewport,350);},{passive:true});
+window.visualViewport?.addEventListener('resize',syncViewport,{passive:true});
+window.visualViewport?.addEventListener('scroll',syncViewport,{passive:true});
+
 // The simulation runs in the game's own units (same tune as the test lab). Only
 // the rendered root is scaled down to toy size and anchored on XR8's floor (Y=0).
 // No floor is drawn: an invisible collider holds the car, and a shadow-only
@@ -132,6 +158,7 @@ function buildPhysics(){
 async function setupScene(){
   ({scene,camera,renderer}=XR8.Threejs.xrScene());
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;
+  syncViewport();setTimeout(syncViewport,50);setTimeout(syncViewport,250);
   scene.add(new THREE.HemisphereLight(0xffffff,0x596779,1.6));
   sun=new THREE.DirectionalLight(0xffffff,2.2);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
   Object.assign(sun.shadow.camera,{left:-1,right:1,top:1,bottom:-1,near:.01,far:6});sun.shadow.bias=-.0005;
@@ -235,7 +262,7 @@ $('startBtn').addEventListener('click',()=>{
   if(!xrReady||xrStarted)return;
   xrStarted=true;$('startBtn').disabled=true;$('startBtn').textContent='تحميل السيارة…';
   $('loadState').textContent='اسمح بالكاميرا عند السؤال.';
-  try{XR8.run({canvas:$('camerafeed')});}catch(e){console.error(e);fail('تعذر تشغيل الكاميرا: '+(e.message||e));}
+  try{XR8.run({canvas:$('camerafeed')});syncViewport();setTimeout(syncViewport,120);setTimeout(syncViewport,500);setTimeout(syncViewport,1200);}catch(e){console.error(e);fail('تعذر تشغيل الكاميرا: '+(e.message||e));}
 });
 $('placeBtn').addEventListener('click',place);
 $('move').addEventListener('click',move);
